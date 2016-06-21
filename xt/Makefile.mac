@@ -1,0 +1,50 @@
+FF = /usr/local/bin/gfortran
+LD = /usr/local/bin/gfortran
+
+
+FFLAGS =  -O  
+LDFLAGS = -L./ext/minpack -lminpack
+
+
+out.nc : snap_shots
+	python mc_to_netcdf.py
+	rm snap_shots
+
+
+snap_shots : mcnde
+	./mcnde 
+
+F77SRC = central_scheme_correct.f duni.f 
+F77OBJ = $(F77SRC:.f=.o)
+
+F90SRC = multicloud_newform_relaxndstoch.f90 stochastic.f90 
+F90OBJ = $(F90SRC:.f90=.o)
+
+
+
+%.o : %.f 
+	$(FF) $(FFLAGS) -c $^
+
+
+ext/minpack/libminpack.a : 
+	$(MAKE) -C ext
+
+forcings.o : forcings.f90
+	$(FF) $(FFLAGS) -c $^
+
+stochastic.o :  stochastic.f90 util.o
+	$(FF) $(FFLAGS) -c $^
+
+
+util.o :  util.f90
+	$(FF) $(FFLAGS) -c $^
+
+mcnde : multicloud_newform_relaxndstoch.f90 stochastic.o util.o forcings.o $(F77OBJ) ext/minpack/libminpack.a
+	  $(FF) $(FFLAGS) -o $@ $(LDFLAGS) $^
+
+test : stochastic.o duni.o test.f90 ; $(FF) $(FFLAGS) -o $@ $^
+
+clean : 
+	rm -f *.o *.so *.mod mcnde
+	rm -f time_aver_out  time_of_time_aver_out time_aver_out snap_shots rms_energy min_amp max_amp OUTPUT sst output00 fort.22 conv
+	$(MAKE) -C ext clean

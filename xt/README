@@ -1,0 +1,39 @@
+This is the code for running the Stochastic Multicloud model described in
+FMK13. To compile and run the code needs the following steps:
+
+Compiling
+=========
+
+To generate the Makefiles run
+    cmake .
+
+Then, to compile the binary run
+    make
+
+Running
+=======
+
+To run the file simply execute
+    ./mcnde
+
+
+Post-processing
+===============
+
+The code outputs the raw binary fields to a file called "snap_shots". To post
+process this output into a standard netcdf file, use the load.py script. It
+requires a standard scientific python installation (python v3) and the xray python package. 
+
+To create the output "data.nc" simple run 
+    python load.py
+in the same directory as "snap_shots".
+
+
+Changing parameters and run length
+==================================
+
+The source code needs to be edited manually. In the file
+"multicloud_newform...." some of the usefull variables are
+
+    tend   # length of run
+    n      # number of grid points
