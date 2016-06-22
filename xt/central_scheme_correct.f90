@@ -6,7 +6,7 @@ contains
   subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
     implicit none
     integer n, i,j
-    real*8 uc(5,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld
+    real*8 uc(5,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, fc(5,-1:n+2)
 
     real*8 ux(5,0:n+1),lmd, lmd_2,u_stag(5,-1:n+2) ,nlt
     nlt=1.d0                  ! nonlinearity set to zero.
@@ -40,20 +40,33 @@ contains
     !     predictor: mid-time-step pointwise values at cell-center-grid-points (x_i)
     !
 
+    do i =1,n
+       fc(1,i) = -uc(3,i)
+       fc(2,i) = -uc(4,i)
+       fc(3,i) = -uc(1,i)
+       fc(4,i) = -uc(2,i)/4
+       fc(5,i) = q_tld * (uc(1,i) + lmd_tld * uc(2, i)) + uc(5,i) * (uc(1,i) + alpha_tld * uc(2,i))
+    end do
+
+    call slopes(fc, ux)
+
     do i=1,n
+       do j =1,5
 
+          uc(j,i) = uc(j,i) - lmd_2 * ux(j,i)
 
-       uc(5,i) = uc(5,i) - lmd_2*( nlt*(uc(5,i)  + &
-            &    q_tld)* ux(1,i) &
-            &        + (alpha_tld*uc(5,i)*nlt + &
-            &        lmd_tld*q_tld)* ux(2,i) &
-            &      +  (uc(1,i)*nlt + alpha_tld*uc(2,i))*ux(5,i) &
-            &        )
+       ! uc(5,i) = uc(5,i) - lmd_2*( nlt*(uc(5,i)  + &
+       !      &    q_tld)* ux(1,i) &
+       !      &        + (alpha_tld*uc(5,i)*nlt + &
+       !      &        lmd_tld*q_tld)* ux(2,i) &
+       !      &      +  (uc(1,i)*nlt + alpha_tld*uc(2,i))*ux(5,i) &
+       !      &        )
 
-       uc(1,i) = uc(1,i) +  lmd_2*ux(3,i)
-       uc(2,i) = uc(2,i) +  lmd_2*ux(4,i)
-       uc(3,i) = uc(3,i) +  lmd_2*ux(1,i)
-       uc(4,i) = uc(4,i) +  lmd_2*ux(2,i)/4
+       ! uc(1,i) = uc(1,i) +  lmd_2*ux(3,i)
+       ! uc(2,i) = uc(2,i) +  lmd_2*ux(4,i)
+       ! uc(3,i) = uc(3,i) +  lmd_2*ux(1,i)
+       ! uc(4,i) = uc(4,i) +  lmd_2*ux(2,i)/4
+       end do
     enddo
 
 
