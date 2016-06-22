@@ -6,6 +6,7 @@ PROGRAM three_cloud_types_new_formulation
 use stochastic
 use util
 use forcings
+use nonlinear_module
 IMPLICIT NONE
 INTEGER :: i, niter, iter,k,nout, iout,inrg
 integer(4) :: n

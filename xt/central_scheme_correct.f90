@@ -1,187 +1,189 @@
-
 !     
-!   NON OSCILLATORY CENTRAL SCHEME OF G-S JIANG AND EITAN TADMOR
+!   non oscillatory central scheme of g-s jiang and eitan tadmor
 !
-SUBROUTINE Central_scheme(UC,DX,DT,N,Q_tld,alpha_tld,lmd_tld)
-implicit none
-INTEGER N, I,j
-REAL*8 UC(5,-1:n+2), DX,DT,Q_tld,alpha_tld,lmd_tld
+module nonlinear_module
+contains
+  subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
+    implicit none
+    integer n, i,j
+    real*8 uc(5,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld
 
-real*8 Ux(5,0:n+1),LMD, lmd_2,u_stag(5,-1:n+2) ,NLT
-NLT=1.d0                  ! Nonlinearity set to zero.
-LMD= DT/DX
-LMD_2= LMD/2
-
-
-!
-!     get bound. cond. and slopes
-!
+    real*8 ux(5,0:n+1),lmd, lmd_2,u_stag(5,-1:n+2) ,nlt
+    nlt=1.d0                  ! nonlinearity set to zero.
+    lmd= dt/dx
+    lmd_2= lmd/2
 
 
-
-call slopes(UC,UX,N)
-
-
-!
-!     second order central scheme
-!
-!
-!     staggered cell averages reconstruction:   xi_stag(i,j):=xi(x_{i+1/2},y_{j+1/2})
-!     
-do J=1,5
-    DO I=1,N
-      u_stag(J,I)=(UC(J,I) + UC(J,I+1))/2 &
-&           +(Ux(J,I)-Ux(J,I+1))/8
-    ENDDO
-ENDDO
-
-!     
-!     predictor: mid-time-step pointwise values at cell-center-grid-points (x_i)
-!
-
-do I=1,N
-
-
-    UC(5,I) = UC(5,I) - LMD_2*( NLT*(UC(5,I)  + &
-    &    Q_TLD)* UX(1,I) &
-    &        + (alpha_tld*UC(5,I)*NLT + &
-    &        lmd_tld*Q_TLD)* UX(2,I) &
-    &      +  (UC(1,I)*NLT + alpha_tld*UC(2,I))*UX(5,I) &
-    &        )
-
-    UC(1,I) = UC(1,I) +  LMD_2*UX(3,I)
-    UC(2,I) = UC(2,I) +  LMD_2*UX(4,I)
-    UC(3,I) = UC(3,I) +  LMD_2*UX(1,I)
-    UC(4,I) = UC(4,I) +  LMD_2*UX(2,I)/4
-ENDDO
+    !
+    !     get bound. cond. and slopes
+    !
 
 
 
+    call slopes(uc,ux,n)
 
 
-!
-!     boundary conditions for mid-time-step cell-centered values
-!
-
-
-CALL PERIODIC_BC(UC, N)
-
-
-
-
-!
-!     Corrector: high resolution second order scheme
-!
-
-DO I=1,N
-
-    u_stag(1,I)= u_stag(1,I) + LMD*(uC(3,I+1)-uC(3,I))
-    u_stag(2,I)= u_stag(2,I) + LMD*(uC(4,I+1)-uC(4,I))
-    u_stag(3,I)= u_stag(3,I) + LMD*(uC(1,I+1)-uC(1,I))
-    u_stag(4,I)= u_stag(4,I) + LMD*(uC(2,I+1)-uC(2,I))/4
-
-    u_stag(5,I)= u_stag(5,I) - LMD*( &
-    &        UC(5,I+1)*(UC(1,I+1) + ALPHA_TLD*UC(2,I+1))*NLT + &
-    &        Q_TLD*(UC(1,I+1) + LMD_TLD*UC(2,I+1)) &
-    &        -UC(5,I)*(UC(1,I)+ ALPHA_TLD*UC(2,I))*NLT &
-    &        - Q_TLD*(UC(1,I) + LMD_TLD*UC(2,I)))
-
-ENDDO
-
-!
-!     Boundray conditions and slopes for staggered values
-!
-
-
-call slopes(U_STAG,UX,N)
-
-!
-!     Centered cell averaging:
-!
-
-do J=1,5
-    DO I=1,N
-      uC(J,I)=(U_STAG(J,I-1) + U_STAG(J,I))/2 &
-      &           +(Ux(J,I-1)-Ux(J,I))/8
-    ENDDO
-ENDDO
-
-RETURN
-END
-
-SUBROUTINE PERIODIC_BC(UC, N)
-implicit none
-INTEGER J,N
-REAL*8 UC(5,-1:n+2)
-DO J=1,5
-    UC(J,-1) = UC(J,N-1)
-    UC(J,0) =  UC(J,N)
-    UC(J,N+1) = UC(J,1)
-    UC(J,N+2) = UC(J,2)
-ENDDO
-RETURN
-END
-
-
-subroutine slopes(uc,ux,N)
-implicit none
-integer N,I,J
-!      parameter(nmax=256,mmax=200)
-real*8 uc(5,-1:n+2)
-real*8 ux(5,0:n+1),tht,bminmod
-parameter(tht=1.5d0)      !tht must be between 1 to 2.
-
-logical limiter
-
-parameter(limiter=.true.)
-
-!
-!     periodic boundary conditions in x
-!
-
-call  PERIODIC_BC(UC, N)
-
-
-
-!
-!    High resolution slopes calculation
-!
-
-do j=1,5
-    do i=0,N+1
-      if(limiter)then
-          ux(j,i)= bminmod(tht*(uc(j,i+1)-uc(j,i)), &
-          &               (uc(j,i+1)-uc(j,i-1))/2,tht*(uc(j,i)-uc(j,i-1)))
-
-
-      else
-          ux(j,i)= (uc(j,i+1)-uc(j,i-1))/2
-
-
-      endif
+    !
+    !     second order central scheme
+    !
+    !
+    !     staggered cell averages reconstruction:   xi_stag(i,j):=xi(x_{i+1/2},y_{j+1/2})
+    !     
+    do j=1,5
+       do i=1,n
+          u_stag(j,i)=(uc(j,i) + uc(j,i+1))/2 &
+               &           +(ux(j,i)-ux(j,i+1))/8
+       enddo
     enddo
-enddo
+
+    !     
+    !     predictor: mid-time-step pointwise values at cell-center-grid-points (x_i)
+    !
+
+    do i=1,n
+
+
+       uc(5,i) = uc(5,i) - lmd_2*( nlt*(uc(5,i)  + &
+            &    q_tld)* ux(1,i) &
+            &        + (alpha_tld*uc(5,i)*nlt + &
+            &        lmd_tld*q_tld)* ux(2,i) &
+            &      +  (uc(1,i)*nlt + alpha_tld*uc(2,i))*ux(5,i) &
+            &        )
+
+       uc(1,i) = uc(1,i) +  lmd_2*ux(3,i)
+       uc(2,i) = uc(2,i) +  lmd_2*ux(4,i)
+       uc(3,i) = uc(3,i) +  lmd_2*ux(1,i)
+       uc(4,i) = uc(4,i) +  lmd_2*ux(2,i)/4
+    enddo
 
 
 
 
-return
-end
+
+    !
+    !     boundary conditions for mid-time-step cell-centered values
+    !
+
+
+    call periodic_bc(uc, n)
 
 
 
-real*8 function bminmod(a,b,c)
-real*8 a,b,c
-if(a.gt.0.d0.and.b.gt.0.d0.and.c.gt.0.d0) then
 
-    bminmod= dmin1(a,b,c)
-elseif(a.lt.0.d0.and.b.lt.0.d0.and.c.lt.0.d0) then
-    bminmod= dmax1(a,b,c)
-else
-    bminmod=0.d0
-endif
-return
-end
+    !
+    !     corrector: high resolution second order scheme
+    !
+
+    do i=1,n
+
+       u_stag(1,i)= u_stag(1,i) + lmd*(uc(3,i+1)-uc(3,i))
+       u_stag(2,i)= u_stag(2,i) + lmd*(uc(4,i+1)-uc(4,i))
+       u_stag(3,i)= u_stag(3,i) + lmd*(uc(1,i+1)-uc(1,i))
+       u_stag(4,i)= u_stag(4,i) + lmd*(uc(2,i+1)-uc(2,i))/4
+
+       u_stag(5,i)= u_stag(5,i) - lmd*( &
+            &        uc(5,i+1)*(uc(1,i+1) + alpha_tld*uc(2,i+1))*nlt + &
+            &        q_tld*(uc(1,i+1) + lmd_tld*uc(2,i+1)) &
+            &        -uc(5,i)*(uc(1,i)+ alpha_tld*uc(2,i))*nlt &
+            &        - q_tld*(uc(1,i) + lmd_tld*uc(2,i)))
+
+    enddo
+
+    !
+    !     boundray conditions and slopes for staggered values
+    !
+
+
+    call slopes(u_stag,ux,n)
+
+    !
+    !     centered cell averaging:
+    !
+
+    do j=1,5
+       do i=1,n
+          uc(j,i)=(u_stag(j,i-1) + u_stag(j,i))/2 &
+               &           +(ux(j,i-1)-ux(j,i))/8
+       enddo
+    enddo
+
+    return
+  end subroutine central_scheme
+
+  subroutine periodic_bc(uc, n)
+    implicit none
+    integer j,n
+    real*8 uc(5,-1:n+2)
+    do j=1,5
+       uc(j,-1) = uc(j,n-1)
+       uc(j,0) =  uc(j,n)
+       uc(j,n+1) = uc(j,1)
+       uc(j,n+2) = uc(j,2)
+    enddo
+    return
+  end subroutine periodic_bc
+
+
+  subroutine slopes(uc,ux,n)
+    implicit none
+    integer n,i,j
+    !      parameter(nmax=256,mmax=200)
+    real*8 uc(5,-1:n+2)
+    real*8 ux(5,0:n+1),tht
+    parameter(tht=1.5d0)      !tht must be between 1 to 2.
+
+    logical limiter
+
+    parameter(limiter=.true.)
+
+    !
+    !     periodic boundary conditions in x
+    !
+
+    call  periodic_bc(uc, n)
 
 
 
+    !
+    !    high resolution slopes calculation
+    !
+
+    do j=1,5
+       do i=0,n+1
+          if(limiter)then
+             ux(j,i)= bminmod(tht*(uc(j,i+1)-uc(j,i)), &
+                  &               (uc(j,i+1)-uc(j,i-1))/2,tht*(uc(j,i)-uc(j,i-1)))
+
+
+          else
+             ux(j,i)= (uc(j,i+1)-uc(j,i-1))/2
+
+
+          endif
+       enddo
+    enddo
+
+
+
+
+    return
+  end subroutine slopes
+
+
+
+  real*8 function bminmod(a,b,c)
+    real*8 a,b,c
+    if(a.gt.0.d0.and.b.gt.0.d0.and.c.gt.0.d0) then
+
+       bminmod= dmin1(a,b,c)
+    elseif(a.lt.0.d0.and.b.lt.0.d0.and.c.lt.0.d0) then
+       bminmod= dmax1(a,b,c)
+    else
+       bminmod=0.d0
+    endif
+    return
+  end function bminmod
+
+
+
+end module nonlinear_module
