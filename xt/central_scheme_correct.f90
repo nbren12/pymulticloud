@@ -20,7 +20,7 @@ contains
 
 
 
-    call slopes(uc,ux,n)
+    call slopes(uc,ux)
 
 
     !
@@ -94,7 +94,7 @@ contains
     !
 
 
-    call slopes(u_stag,ux,n)
+    call slopes(u_stag,ux)
 
     !
     !     centered cell averaging:
@@ -124,12 +124,12 @@ contains
   end subroutine periodic_bc
 
 
-  subroutine slopes(uc,ux,n)
+  subroutine slopes(uc,ux)
     implicit none
     integer n,i,j
     !      parameter(nmax=256,mmax=200)
-    real*8 uc(5,-1:n+2)
-    real*8 ux(5,0:n+1),tht
+    real*8 uc(:,-1:)
+    real*8 ux(:,0:),tht
     parameter(tht=1.5d0)      !tht must be between 1 to 2.
 
     logical limiter
@@ -148,8 +148,8 @@ contains
     !    high resolution slopes calculation
     !
 
-    do j=1,5
-       do i=0,n+1
+    do j=1,size(uc,1)
+       do i=0,ubound(ux,2)
           if(limiter)then
              ux(j,i)= bminmod(tht*(uc(j,i+1)-uc(j,i)), &
                   &               (uc(j,i+1)-uc(j,i-1))/2,tht*(uc(j,i)-uc(j,i-1)))
