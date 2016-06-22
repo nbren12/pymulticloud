@@ -7,7 +7,7 @@ set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 SET ( SOURCES  forcings.f90
     multicloud_newform_relaxndstoch.f90
     stochastic.f90 util.f90
-    central_scheme_correct.f
+    central_scheme_correct.f90
     duni.f
     )
 
