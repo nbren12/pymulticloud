@@ -3,6 +3,9 @@
 !
 module nonlinear_module
   implicit none
+
+  logical, parameter :: toggle_nonlinear = .false.
+  integer, parameter :: ntrunc = 2
 contains
   subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
     implicit none
@@ -42,7 +45,9 @@ contains
     !
 
 
-    call flux(uc, fc,q_tld,alpha_tld,lmd_tld)
+    do i=-1,n+2
+       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld)
+    end do
     call slopes(fc, ux)
 
     do i=1,n
@@ -61,7 +66,10 @@ contains
 
 
     call periodic_bc(uc, 2)
-    call flux(uc, fc,q_tld,alpha_tld,lmd_tld)
+
+    do i=-1,n+2
+       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld)
+    end do
 
 
 
@@ -98,21 +106,86 @@ contains
     return
   end subroutine central_scheme
 
-  subroutine flux(uc,fc,q_tld,alpha_tld,lmd_tld)
-    real(8), intent(in) :: uc(:,:)
-    real(8), intent(out) :: fc(:,:)
+  subroutine flux(u, f, q_tld,alpha_tld,lmd_tld)
+
+    real(8), intent(in) :: u(:)
+    real(8), intent(out):: f(:)
     real*8 q_tld,alpha_tld,lmd_tld
-    integer i
 
-    do i =1,size(uc,2)
-       fc(1,i) = -uc(3,i)
-       fc(2,i) = -uc(4,i)
-       fc(3,i) = -uc(1,i)
-       fc(4,i) = -uc(2,i)/4
-       fc(5,i) = q_tld * (uc(1,i) + lmd_tld * uc(2, i)) + uc(5,i) * (uc(1,i) + alpha_tld * uc(2,i))
+
+    integer m, i, L
+    real(8) theta(ntrunc), q
+    real(8) ftheta(ntrunc), fq
+
+
+    L = ntrunc
+
+
+    ! unpack data from u vector
+    ! adjust temperature from FMK13 convection : m  theta_m -> theta_m
+    do m=1,ntrunc
+       theta(m) = u(m+L) * m
     end do
-  end subroutine flux
 
+    q = u(2*L+1)
+
+    f = 0.0d0
+    ftheta = 0.0d0
+    fq = 0.0d0
+
+    do m=1,ntrunc
+
+       if (toggle_nonlinear) then
+
+          ! velocity
+          do i=1,m-1
+             f(m) = f(m) + u(i) * u(m-i)
+          end do
+
+          do i=1,L-m
+             f(m) = f(m) + 2 * u(i) * u(i+m)
+          end do
+
+          f(m) = f(m)/ dsqrt(2.0d0)
+
+          ! temperature
+          do i=1,m-1
+             ftheta(m) = ftheta(m) + u(i) * theta(m-i)
+          end do
+
+          do i=1,L-m
+             ftheta(m) = ftheta(m) +  u(i) * theta(i+m) - u(i+m) * theta(i)
+          end do
+
+          ftheta(m) = ftheta(m)/ dsqrt(2.0d0)
+
+       end if
+
+
+       ! Linear terms
+
+       ! Pressure gradient
+       f(m) = f(m) - theta(m) / m
+
+       ! convergence
+       ftheta(m) = ftheta(m) - u(m) / m
+
+
+    end do
+
+    ! moisture equation
+    fq  = q_tld * (u(1) + lmd_tld * u(2)) + q *(u(1) + alpha_tld * u(2))
+
+
+    ! copy output to flux array
+    ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
+    do m=1,ntrunc
+       f(L+m) = ftheta(m) / m
+    end do
+
+    f(2*L+1) = fq
+
+  end subroutine flux
 
   subroutine periodic_bc(phi, g)
     real(8) :: phi(:,:)
