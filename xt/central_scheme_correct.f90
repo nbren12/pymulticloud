@@ -65,7 +65,7 @@ contains
     !
 
 
-    call periodic_bc(uc, n)
+    call periodic_bc(uc, 2)
 
 
 
@@ -110,19 +110,21 @@ contains
     return
   end subroutine central_scheme
 
-  subroutine periodic_bc(uc, n)
-    implicit none
-    integer j,n
-    real*8 uc(5,-1:n+2)
-    do j=1,5
-       uc(j,-1) = uc(j,n-1)
-       uc(j,0) =  uc(j,n)
-       uc(j,n+1) = uc(j,1)
-       uc(j,n+2) = uc(j,2)
-    enddo
-    return
-  end subroutine periodic_bc
 
+  subroutine periodic_bc(phi, g)
+    real(8) :: phi(:,:)
+    integer nx,ny,g,i,j
+    n = size(phi,2)
+
+
+    do i=1,g
+       do j=1,size(phi,1)
+          phi(j,i) = phi(j,n-g-g+1)
+          phi(j,n-g+i) = phi(j,g+i)
+       end do
+    end do
+
+  end subroutine periodic_bc
 
   subroutine slopes(uc,ux)
     implicit none
@@ -140,7 +142,7 @@ contains
     !     periodic boundary conditions in x
     !
 
-    call  periodic_bc(uc, n)
+    call  periodic_bc(uc, 2)
 
 
 
