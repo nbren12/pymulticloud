@@ -219,10 +219,10 @@ DO i=1,n
   u_temp(7) = hs(i)
   u_temp(8) = hc(i)
 
-  fu1 = - ud*u1(i)
-  fu2 = - ud*u2(i)
-  u1(i) = u1(i) + dt*fu1
-  u2(i) = u2(i) + dt*fu2
+  ! fu1 = - ud*u1(i)
+  ! fu2 = - ud*u2(i)
+  ! u1(i) = u1(i) + dt*fu1
+  ! u2(i) = u2(i) + dt*fu2
 
 
 !     PREDICTION
@@ -275,10 +275,10 @@ DO i=1,n
 !   CORRECTION
 
 
-  fu1= (fu1- ud*u1(i))/2
-  fu2= (fu2- ud*u2(i))/2
-  u1(i) = u_temp(1) + dt*fu1
-  u2(i) = u_temp(2) + dt*fu2
+  ! fu1= (fu1- ud*u1(i))/2
+  ! fu2= (fu2- ud*u2(i))/2
+  ! u1(i) = u_temp(1) + dt*fu1
+  ! u2(i) = u_temp(2) + dt*fu2
 
 
 

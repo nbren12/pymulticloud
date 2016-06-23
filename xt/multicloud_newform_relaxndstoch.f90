@@ -8,9 +8,9 @@ use util
 use forcings
 use nonlinear_module
 IMPLICIT NONE
-INTEGER :: i, niter, iter,k,nout, iout,inrg
+INTEGER :: i, j, niter, iter,k,nout, iout,inrg
 integer(4) :: n
-integer :: GAUGE_ID = 37, SNAPSHOT_ID = 38, PARAMETER_OUTPUT=35
+integer :: GAUGE_ID = 37, SNAPSHOT_ID = 38,ufid=39, tfid=40, PARAMETER_OUTPUT=35
 logical :: BINARY_OUTPUT
 REAL*8 taumult ,nstochloc
 PARAMETER(n=1040)
@@ -386,7 +386,7 @@ tenergya= dt_max*3.d0
 twave_outa=tend-100.d0*day/t
 
 tenergy= (3.d0)*hour/t
-twave_out= 100.d0*day/t
+! twave_out= 000.d0*day/t
 
 
 
@@ -549,7 +549,7 @@ END DO
 
 
 
-dt = DMIN1(0.9*dx/umax,dt_max)
+dt = DMIN1(0.9*dx/umax,dt_max)/2d0
 
 IF(iter == 1)THEN
   WRITE(35,*)' Initial Time step =', 2*dt*t/minute, 'minutes  iter=',     iter
@@ -579,8 +579,16 @@ END DO
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
-! split-in-time vertical advection
 call vertical_advection_driver(uc, dx, 2d0*dt, n)
+
+! damping
+do i=1,n
+   do j = 1,ntrunc
+      uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
+   end do
+end do
+
+! split-in-time vertical advection
 
 ! copy output to flux array for stochastic multicloud step
 ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
@@ -595,6 +603,7 @@ END DO
 IF (time > dctime) THEN
   s1=DMIN1(1.d0,(time-dctime)/dcint)
 END IF
+
 
 
 
@@ -641,7 +650,6 @@ IF(time >= (inrg+1)*tenergy) THEN
   CALL out_amp(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,time)
   inrg=inrg+1
 !         write(*,*) inrg
-  WRITE(*,*) time*t/day
   
 END IF
 
@@ -650,12 +658,13 @@ END IF
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-IF((time+twave_out-tend) >= (twave_count2+1)*tenergy) THEN
+IF(time >= (twave_count2+1)*tenergy) THEN
   
   twave_count2=twave_count2+1
   
   if (BINARY_OUTPUT) then
 
+     WRITE(*,*) 'outputing snapshot at time', time * T / day
      WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
           alpha_bar *theta1, alpha_bar * theta2,  &
           alpha_bar*theta_eb, &
@@ -664,7 +673,9 @@ IF((time+twave_out-tend) >= (twave_count2+1)*tenergy) THEN
           alpha_bar/ (T / day) *DMAX1(0D0,hc), &
           alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
           fcls,fdls,fsls
-  
+
+     write(unit=ufid)  uc(:,1:n)
+
   else
       DO i=1,n
     
