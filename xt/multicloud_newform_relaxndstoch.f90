@@ -566,21 +566,25 @@ WRITE(GAUGE_ID, 103) time * t / day,c* u1(i),c*u2(i), alpha_bar * theta1(i),alph
     alpha_bar/t *day* DMAX1(0.00000000000001D0,hd(i)),  &
     fcls(i),fdls(i),fsls(i)
 
+! unpack data from u vector
+! adjust temperature from FMK13 convection : m  theta_m -> theta_m
 DO i=1,n
   uc(1,i) = u1(i)
   uc(2,i) = u2(i)
-  uc(3,i) = theta1(i)
-  uc(4,i) = theta2(i)
+  uc(3,i) = theta1(i)*1
+  uc(4,i) = theta2(i)*2
   uc(5,i) = q(i)
 END DO
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
+! copy output to flux array
+! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
 DO i=1,n
   u1(i) = uc(1,i)
   u2(i) = uc(2,i)
-  theta1(i) = uc(3,i)
-  theta2(i) = uc(4,i)
+  theta1(i) = uc(3,i)/1
+  theta2(i) = uc(4,i)/2
   q(i) = uc(5,i)
 END DO
 
@@ -600,24 +604,26 @@ dt=tempg
 
 
 
+! unpack data from u vector
+! adjust temperature from FMK13 convection : m  theta_m -> theta_m
 DO i=1,n
-  uc(1,i) = u1(i)
-  uc(2,i) = u2(i)
-  uc(3,i) = theta1(i)
-  uc(4,i) = theta2(i)
-  uc(5,i) = q(i)
+   uc(1,i) = u1(i)
+   uc(2,i) = u2(i)
+   uc(3,i) = theta1(i)*1
+   uc(4,i) = theta2(i)*2
+   uc(5,i) = q(i)
 END DO
-
-
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
+! copy output to flux array
+! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
 DO i=1,n
-  u1(i)=uc(1,i)
-  u2(i)=uc(2,i)
-  theta1(i)=uc(3,i)
-  theta2(i)=uc(4,i)
-  q(i)=uc(5,i)
+   u1(i) = uc(1,i)
+   u2(i) = uc(2,i)
+   theta1(i) = uc(3,i)/1
+   theta2(i) = uc(4,i)/2
+   q(i) = uc(5,i)
 END DO
 
 

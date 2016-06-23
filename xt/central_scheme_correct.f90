@@ -1,4 +1,4 @@
-!     
+!
 !   non oscillatory central scheme of g-s jiang and eitan tadmor
 !
 module nonlinear_module
@@ -32,7 +32,7 @@ contains
     !
     !
     !     staggered cell averages reconstruction:   xi_stag(i,j):=xi(x_{i+1/2},y_{j+1/2})
-    !     
+    !
     do j=1,5
        do i=1,n
           u_stag(j,i)=(uc(j,i) + uc(j,i+1))/2 &
@@ -40,7 +40,7 @@ contains
        enddo
     enddo
 
-    !     
+    !
     !     predictor: mid-time-step pointwise values at cell-center-grid-points (x_i)
     !
 
@@ -121,10 +121,8 @@ contains
     L = ntrunc
 
 
-    ! unpack data from u vector
-    ! adjust temperature from FMK13 convection : m  theta_m -> theta_m
     do m=1,ntrunc
-       theta(m) = u(m+L) * m
+       theta(m) = u(m+L)
     end do
 
     q = u(2*L+1)
@@ -177,10 +175,8 @@ contains
     fq  = q_tld * (u(1) + lmd_tld * u(2)) + q *(u(1) + alpha_tld * u(2))
 
 
-    ! copy output to flux array
-    ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
     do m=1,ntrunc
-       f(L+m) = ftheta(m) / m
+       f(L+m) = ftheta(m)
     end do
 
     f(2*L+1) = fq
