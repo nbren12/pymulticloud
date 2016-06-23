@@ -4,20 +4,19 @@
 module nonlinear_module
   implicit none
 
-  logical, parameter :: toggle_nonlinear = .false.
+  logical, parameter :: toggle_nonlinear = .true.
   integer, parameter :: ntrunc = 2
 contains
 
   subroutine vertical_advection_temp(w,t,f)
 
     real(8), intent(in) :: w(:), t(:)
-    real(8), intent(out) :: f(:)
+    real(8), intent(inout) :: f(:)
 
     integer i,m,L
     L = size(f)
 
     do m=1,L
-       f(m) = 0
 
        do i=1,m-1
           f(m) = f(m) + t(i) * w(m-i)
@@ -35,14 +34,12 @@ contains
   subroutine vertical_advection_u(w,u,f)
 
     real(8), intent(in) :: w(:), u(:)
-    real(8), intent(out) :: f(:)
+    real(8), intent(inout) :: f(:)
 
     integer i,m,L
     L = size(f)
 
     do m=1,L
-       f(m) = 0
-
        do i=1,m-1
           f(m) = f(m) + u(i) * w(m-i)
        end do
@@ -67,6 +64,7 @@ contains
 
     call periodic_bc(uc, 2)
 
+    f = 0
     if (toggle_nonlinear) then
        do i=1,n
 
