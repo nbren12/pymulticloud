@@ -4,7 +4,7 @@
 module nonlinear_module
   implicit none
 
-  logical, parameter :: toggle_nonlinear = .false.
+  logical, parameter :: toggle_nonlinear = .true.
   integer, parameter :: ntrunc = 4
 contains
 
@@ -19,11 +19,11 @@ contains
     do m=1,L
 
        do i=1,m-1
-          f(m) = f(m) + t(i) * w(m-i)
+          f(m) = f(m) - t(i) * w(m-i)
        end do
 
        do i=1,L-m
-          f(m) = f(m) - w(i) * t(i+m) - t(i) * w(i+m)
+          f(m) = f(m) + w(i) * t(i+m) + t(i) * w(i+m)
        end do
 
        f(m) = f(m) * m / dsqrt(2.0d0)
@@ -41,11 +41,11 @@ contains
 
     do m=1,L
        do i=1,m-1
-          f(m) = f(m) + u(i) * w(m-i)
+          f(m) = f(m) - u(i) * w(m-i)
        end do
 
        do i=1,L-m
-          f(m) = f(m) - w(i) * u(i+m) + u(i) * w(i+m)
+          f(m) = f(m) + w(i) * u(i+m) - u(i) * w(i+m)
        end do
 
        f(m) = f(m) * m / dsqrt(2.0d0)
@@ -70,7 +70,7 @@ contains
 
           ! read in from state array
           do j=1,ntrunc
-             w(j) = (uc(j, i-1) - uc(j, i+1))/dx
+             w(j) = (uc(j, i-1) - uc(j, i+1))/2.0d0/dx/j
              temp(j) = uc(ntrunc+j,i)
           end do
 
