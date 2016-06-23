@@ -20,7 +20,7 @@ PARAMETER(taumult=1.d0)
 !     PROGNOSTIC VARIABLES
 REAL*8 u1(n),u2(n),theta1(n),theta2(n),  &
     q(n),theta_eb(n),hd(n),hs(n),hc(n),hds(n)
-REAL*8 uc(5,-1:n+2)
+REAL*8 uc(2*ntrunc+1,-1:n+2)
 REAL*8 thteb_st(n), asst,lsst
 
 
@@ -422,6 +422,7 @@ write(unit=snapshot_id) n
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
+uc = 0.0d0
 CALL initial_data(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,dx,l,p)
 !(u1,u2,theta1,theta2,theta_eb,q,hs,hc,N,DX,L,P)
 
@@ -569,11 +570,11 @@ WRITE(GAUGE_ID, 103) time * t / day,c* u1(i),c*u2(i), alpha_bar * theta1(i),alph
 ! unpack data from u vector
 ! adjust temperature from FMK13 convection : m  theta_m -> theta_m
 DO i=1,n
-  uc(1,i) = u1(i)
-  uc(2,i) = u2(i)
-  uc(3,i) = theta1(i)*1
-  uc(4,i) = theta2(i)*2
-  uc(5,i) = q(i)
+      uc(1,i) = u1(i)
+      uc(2,i) = u2(i)
+      uc(1+ntrunc,i) = theta1(i)*1
+      uc(2+ntrunc,i) = theta2(i)*2
+      uc(2*ntrunc+1,i) = q(i)
 END DO
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
@@ -586,9 +587,9 @@ call vertical_advection_driver(uc, dx, 2d0*dt, n)
 DO i=1,n
   u1(i) = uc(1,i)
   u2(i) = uc(2,i)
-  theta1(i) = uc(3,i)/1
-  theta2(i) = uc(4,i)/2
-  q(i) = uc(5,i)
+  theta1(i) = uc(ntrunc+1,i)/1
+  theta2(i) = uc(ntrunc+2,i)/2
+  q(i) = uc(2*ntrunc+1,i)
 END DO
 
 IF (time > dctime) THEN
@@ -613,23 +614,22 @@ dt=tempg
 DO i=1,n
    uc(1,i) = u1(i)
    uc(2,i) = u2(i)
-   uc(3,i) = theta1(i)*1
-   uc(4,i) = theta2(i)*2
-   uc(5,i) = q(i)
+   uc(1+ntrunc,i) = theta1(i)*1
+   uc(2+ntrunc,i) = theta2(i)*2
+   uc(2*ntrunc+1,i) = q(i)
 END DO
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
-! copy output to flux array
+! copy output to flux array for stochastic multicloud step
 ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
 DO i=1,n
    u1(i) = uc(1,i)
    u2(i) = uc(2,i)
-   theta1(i) = uc(3,i)/1
-   theta2(i) = uc(4,i)/2
-   q(i) = uc(5,i)
+   theta1(i) = uc(ntrunc+1,i)/1
+   theta2(i) = uc(ntrunc+2,i)/2
+   q(i) = uc(2*ntrunc+1,i)
 END DO
-
 
 time= time+2*dt
 

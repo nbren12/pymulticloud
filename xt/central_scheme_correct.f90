@@ -4,8 +4,8 @@
 module nonlinear_module
   implicit none
 
-  logical, parameter :: toggle_nonlinear = .true.
-  integer, parameter :: ntrunc = 2
+  logical, parameter :: toggle_nonlinear = .false.
+  integer, parameter :: ntrunc = 4
 contains
 
   subroutine vertical_advection_temp(w,t,f)
@@ -82,7 +82,7 @@ contains
   end subroutine vertical_advection_tendency
 
   subroutine vertical_advection_driver(uc, dx, dt, n)
-    real(8) uc(5,-1:n+2), dx,dt
+    real(8) uc(2*ntrunc+1,-1:n+2), dx,dt
     integer n
 
     real(8) f(size(uc,1), size(uc,2), 2)
@@ -101,9 +101,9 @@ contains
   subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
     implicit none
     integer n, i,j
-    real*8 uc(5,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, fc(5,-1:n+2)
 
-    real*8 ux(5,0:n+1),lmd, lmd_2,u_stag(5,-1:n+2) ,nlt
+    real(8) uc(2*ntrunc+1,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, fc(2*ntrunc+1,-1:n+2)
+    real(8) ux(2*ntrunc+1,0:n+1),lmd, lmd_2,u_stag(2*ntrunc+1,-1:n+2) ,nlt
     nlt=1.d0                  ! nonlinearity set to zero.
     lmd= dt/dx
     lmd_2= lmd/2
@@ -124,7 +124,7 @@ contains
     !
     !     staggered cell averages reconstruction:   xi_stag(i,j):=xi(x_{i+1/2},y_{j+1/2})
     !
-    do j=1,5
+    do j=1,2*ntrunc+1
        do i=1,n
           u_stag(j,i)=(uc(j,i) + uc(j,i+1))/2 &
                &           +(ux(j,i)-ux(j,i+1))/8
@@ -142,7 +142,7 @@ contains
     call slopes(fc, ux)
 
     do i=1,n
-       do j =1,5
+       do j =1,2*ntrunc+1
           uc(j,i) = uc(j,i) - lmd_2 * ux(j,i)
        end do
     enddo
@@ -170,7 +170,7 @@ contains
     !
 
     do i=1,n
-       do j=1,5
+       do j=1,2*ntrunc+1
 
        u_stag(j,i)= u_stag(j,i) - lmd*(fc(j,i+1)-fc(j,i))
        end do
@@ -187,7 +187,7 @@ contains
     !     centered cell averaging:
     !
 
-    do j=1,5
+    do j=1,2*ntrunc+1
        do i=1,n
           uc(j,i)=(u_stag(j,i-1) + u_stag(j,i))/2 &
                &           +(ux(j,i-1)-ux(j,i))/8
