@@ -578,7 +578,10 @@ END DO
 
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
-! copy output to flux array
+! split-in-time vertical advection
+call vertical_advection_driver(uc, dx, 2d0*dt, n)
+
+! copy output to flux array for stochastic multicloud step
 ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
 DO i=1,n
   u1(i) = uc(1,i)
@@ -591,6 +594,7 @@ END DO
 IF (time > dctime) THEN
   s1=DMIN1(1.d0,(time-dctime)/dcint)
 END IF
+
 
 
 tempg=dt

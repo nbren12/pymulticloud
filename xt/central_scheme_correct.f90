@@ -7,6 +7,99 @@ module nonlinear_module
   logical, parameter :: toggle_nonlinear = .false.
   integer, parameter :: ntrunc = 2
 contains
+
+  subroutine vertical_advection_temp(w,t,f)
+
+    real(8), intent(in) :: w(:), t(:)
+    real(8), intent(out) :: f(:)
+
+    integer i,m,L
+    L = size(f)
+
+    do m=1,L
+       f(m) = 0
+
+       do i=1,m-1
+          f(m) = f(m) + t(i) * w(m-i)
+       end do
+
+       do i=1,L-m
+          f(m) = f(m) - w(i) * t(i+m) - t(i) * w(i+m)
+       end do
+
+       f(m) = f(m) * m / dsqrt(2.0d0)
+    end do
+
+  end subroutine vertical_advection_temp
+
+  subroutine vertical_advection_u(w,u,f)
+
+    real(8), intent(in) :: w(:), u(:)
+    real(8), intent(out) :: f(:)
+
+    integer i,m,L
+    L = size(f)
+
+    do m=1,L
+       f(m) = 0
+
+       do i=1,m-1
+          f(m) = f(m) + u(i) * w(m-i)
+       end do
+
+       do i=1,L-m
+          f(m) = f(m) - w(i) * u(i+m) + u(i) * w(i+m)
+       end do
+
+       f(m) = f(m) * m / dsqrt(2.0d0)
+    end do
+
+  end subroutine vertical_advection_u
+
+  subroutine vertical_advection_tendency(uc, f, dx,dt)
+    real(8) uc(:,-1:)
+    real(8) dx, dt
+    integer i, j, n
+
+    real(8) f(:,:), w(ntrunc), temp(ntrunc)
+
+    n  = ubound(uc, 2) -2
+
+    call periodic_bc(uc, 2)
+
+    if (toggle_nonlinear) then
+       do i=1,n
+
+          ! read in from state array
+          do j=1,ntrunc
+             w(j) = (uc(j, i-1) - uc(j, i+1))/dx
+             temp(j) = uc(ntrunc+j,i)
+          end do
+
+          call vertical_advection_u(w, uc(1:ntrunc,i), f(1:ntrunc, i))
+          call vertical_advection_temp(w, temp, f(ntrunc+1:2*ntrunc, i))
+       end do
+    end if
+
+  end subroutine vertical_advection_tendency
+
+  subroutine vertical_advection_driver(uc, dx, dt, n)
+    real(8) uc(5,-1:n+2), dx,dt
+    integer n
+
+    real(8) f(size(uc,1), size(uc,2), 2)
+
+    if (toggle_nonlinear) then
+       call vertical_advection_tendency(uc, f(:,:,1), dx, dt)
+
+       uc = uc + dt * f(:,:,1)
+
+       call vertical_advection_tendency(uc, f(:,:,2), dx, dt)
+       uc = uc + dt/2d0 * (f(:,:,2) - f(:,:,1))
+    end if
+
+  end subroutine vertical_advection_driver
+
   subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
     implicit none
     integer n, i,j
