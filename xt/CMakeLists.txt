@@ -4,8 +4,10 @@ project (HELLO Fortran)
 set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 
 
-SET ( SOURCES  forcings.f90
+SET ( SOURCES forcings.f90
+    state_mod.f90
     central_scheme_correct.f90
+    cmt_mod.f90
     multicloud_newform_relaxndstoch.f90
     stochastic.f90 util.f90
     duni.f
