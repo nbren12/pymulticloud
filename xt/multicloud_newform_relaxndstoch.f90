@@ -7,13 +7,13 @@ use stochastic
 use util
 use forcings
 use nonlinear_module
+use state_mod
+use cmt_mod
 IMPLICIT NONE
 INTEGER :: i, j, niter, iter,k,nout, iout,inrg
-integer(4) :: n
 integer :: GAUGE_ID = 37, SNAPSHOT_ID = 38,ufid=39, tfid=40, PARAMETER_OUTPUT=35
 logical :: BINARY_OUTPUT
 REAL*8 taumult ,nstochloc
-PARAMETER(n=1040)
 PARAMETER(nstochloc=30)
 PARAMETER(taumult=1.d0)
 
@@ -55,11 +55,6 @@ REAL*8 theta_ebs, theta_ebbar
 REAL*8 u1_av(n),u2_av(n),tht1_av(n),tht2_av(n),tht_eb_av(n),  &
     q_av(n),hs_av(n),hc_av(n),twave_count,twave,twave_out, pr0_av(n),hd_av(n),  &
     lambda_av(n),lambda,tht_eb_tht_em,pr0
-
-!     stochastic variable code
-
-REAL*8 fcls(n),fdls(n),fsls(n)
-
 
 
 !     on fly averaging
@@ -422,6 +417,8 @@ uc = 0.0d0
 CALL initial_data(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,dx,l,p)
 !(u1,u2,theta1,theta2,theta_eb,q,hs,hc,N,DX,L,P)
 
+call initialize_scmt
+
 WRITE(35,*) 'DX=',dx
 WRITE(35,*)'P=',p
 WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
@@ -607,6 +604,8 @@ tempg=dt
 CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
     ,n, dx, 2.d0*dt*t/(hour) )
 dt=tempg
+
+! call updatecmt(scmt)
 
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
     ,2.d0*dt,thteb_st,time,hds,s1)
