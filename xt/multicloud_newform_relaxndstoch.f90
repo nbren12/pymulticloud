@@ -370,7 +370,7 @@ dt_max =1.d0*minute/t
 
 
 
-tend =  10.0d0 *day/t
+tend =  50.0d0 *day/t
 
 niter=tend/dt_max
 nout=1
@@ -609,7 +609,7 @@ CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
     ,n, dx, 2.d0*dt*t/(hour) )
 dt=tempg
 
-call updatecmt(scmt)
+call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2.d0*dt*t/(hour))
 
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
     ,2.d0*dt,thteb_st,time,hds,s1)
