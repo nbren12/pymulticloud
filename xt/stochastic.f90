@@ -1,8 +1,9 @@
 module stochastic 
   use util
+  implicit none
   private
 
-  public  :: updatehcds, w0, equildistr2
+  public  :: updatehcds, equildistr2
 
 contains
 
@@ -13,6 +14,7 @@ contains
   SUBROUTINE equildistr2(cd,cl,d,r01,r02,r10,r20,r23,r12,r30)
     ! Calculate the transition rates given the dryness, lower level
     ! CAPE and middle level CAPE
+    use param
     IMPLICIT NONE
     REAL*8, INTENT(IN OUT)                   :: cd
     REAL*8, INTENT(IN OUT)                   :: cl
@@ -24,14 +26,8 @@ contains
     REAL*8, INTENT(OUT)                      :: r23
     REAL*8, INTENT(OUT)                      :: r12
     REAL*8, INTENT(OUT)                      :: r30
-    REAL*8 tau01,tau02,tau10,tau12,tau20,tau30,tau23, r23value, times
-    REAL*8 capebar,cape0,dry,pbar,qbar,fceq,fdeq,fseq,rstoch,nstochgl
-    REAL*8  dryness,il,tht_eb_tht_emloc,moist0
+    REAL*8  dryness,il,tht_eb_tht_emloc
 
-
-    COMMON /tauscales/ capebar, cape0,dry,pbar, qbar,fceq,fdeq,fseq
-    COMMON /tauscales/  tau01,tau02,tau10,tau12, rstoch
-    COMMON /tauscales/  tau20,tau30,tau23, r23value, times,nstochgl
 
 
 
@@ -219,6 +215,7 @@ contains
   END SUBROUTINE   birthdeath2
 
   SUBROUTINE updatehcds(fcls,fdls,fsls, u1, u2, theta1,theta2,theta_eb,q, hds,hc,hd,n, dx, dt)
+    use param
 
     REAL*8, INTENT(IN OUT)                   :: fcls(n)
     REAL*8, INTENT(IN OUT)                   :: fdls(n)
@@ -236,38 +233,9 @@ contains
     REAL*8 u1(n),u2(n), w1(n), w2(n)
     REAL*8 ftht1,ftht2,fthteb,fq,fhs,fhc,two_sqrt2,xgtemp
 
+    real(8) :: pi
+    real(8) :: hmloc, cd, cl, tht_eb_tht_emloc, fcloc, fdloc, fsloc, dryness
 
-    REAL*8 pr0,pr1,pr,d,lambda,tht_eb_tht_em,alpha3,hsbar, hcbar
-    REAL*8 a0p,a1p,a2p,cconv,alpha4,theta_ebs_m_theta_eb
-
-    REAL*8 a,b,a0,a1,a2,alpha2,lambdas,alpha_s,alpha_c,mu,ud
-    REAL*8 thetap,thetam,zb,zt,fu1,fu2,xis,xic
-
-    REAL*8 qr01,qr02,lambda_bar,pr0_bar,d_bar, theta_eb_m_theta_em,m0,moist0
-
-
-
-    REAL*8 tau_conv,tau_e, tau_s,tau_c,tau_r,pi,timel,t,xg, sdc,dtype
-    REAL*8 u_temp(8)
-    REAL*8 thteb_st(n),nstochgl
-
-    REAL*8 tau01,tau02,tau10,tau12,tau20,tau30,tau23, r23value, times
-    REAL*8 capebar, cape0,dry,pbar, qbar,fceq,fdeq,fseq, rstoch
-    REAL*8 cd, cl, wd, wl, dryness,tht_eb_tht_emloc
-
-
-    REAL*8 fcloc, fdloc, fsloc, hmloc,lambdabar,qcbar,dbar
-
-    real*8 conv1, conv2
-    COMMON/const_par/a,b,a0,a1,a2,a0p,a1p,a2p,alpha2,alpha3,  &
-         lambdas,alpha_s,alpha_c,xis,xic,mu,ud,thetap,thetam,zb,zt
-
-    COMMON /char_times/tau_conv,tau_e, tau_s,tau_c,tau_r,t, sdc,dtype
-    COMMON /tauscales/ capebar, cape0,dry,pbar, qbar,fceq,fdeq,fseq
-    COMMON /tauscales/  tau01,tau02,tau10,tau12, rstoch
-    COMMON /tauscales/  tau20,tau30,tau23, r23value, times,nstochgl
-    COMMON /rce_values/qr01,qr02,lambdabar,qcbar,dbar,  &
-         theta_eb_m_theta_em,m0,theta_ebs_m_theta_eb,moist0,alpha4
 
 
     two_sqrt2 = 2*DSQRT(2.d0)
@@ -334,16 +302,6 @@ contains
     gammabb = 1.d0 - exp (-dmax1(xtemp, 0.0d0))
   end function gammabb
 
-  subroutine fmk13_C(cl, cd, theta1, theta2, theta_eb)
-    real*8 cl, cd, theta1, theta2, theta_eb
-
-    cd= capebar
-    cd=cd+rstoch*(theta_eb-1.7D0*(theta1+alpha2*theta2))
-    cd = cd/cape0
-    cl= capebar
-    cl=cl+rstoch*(theta_eb-1.7D0*(theta1+alpha4*theta2))
-    cl = cl / cape0
-  end subroutine fmk13_C
 
 end module stochastic
 

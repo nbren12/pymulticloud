@@ -33,7 +33,7 @@ REAL*8 q_tld,alpha_tld,lmd_tld,tempg,dctime,dcint,s1
 PARAMETER(alpha_tld=0.1D0,lmd_tld=0.8D0,q_tld=0.9D0)
 
 REAL*8 dt,dx,p, umax,time,dt_max,twave_count2
-REAL*8 alpha_bar,c,l,theta_d,tend,tout,tenergy
+REAL*8 theta_d,tend,tout,tenergy
 
 
 
@@ -45,8 +45,6 @@ REAL*8 fs,fd,fc,deltas
 !      PARAMETER(a1=.9,a2=.1,a0=1.7,alpha2=1.d0)
 
 
-REAL*8 hour, minute, day, km, tempouttime
-PARAMETER(hour=3600.d0, minute=60.0D0, day=86400.0D0, km=1000.d0)
 
 REAL*8 pi,n2,gamma,gammam, cp,omega,r, theta0,g, beta, lcp,EQ
 REAL*8 zm, zp, u0, cd
@@ -203,7 +201,6 @@ b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
 CAPE0 = 400 ! J / Kg
 MOIST0 = 30 ! K
 rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
-w0     = c
 
 OPEN(35,FILE="OUTPUT",STATUS='new')
 WRITE(35,*)'Evaporative time tau_e=', tau_e/3600/24,' days'
@@ -345,7 +342,6 @@ WRITE(*,*) 'tau10'
 WRITE(*,*) tau10
 PRINT*,'m0',m0, 'mu/Qc',mu
 WRITE(35,*)'m0',m0*c,'    m/s'
-write(PARAMETER_OUTPUT,*) 'w0', w0
 WRITE(PARAMETER_OUTPUT, *) 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
 !        stop
 
