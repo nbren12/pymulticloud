@@ -5,13 +5,13 @@ module cmt_mod
   private
 
   real(8) :: pi
-  real(8) :: taur, betaq, betau, qcref, qdref, duref, dumin, d1, d2, tf
+  real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d1, d2, tf
 
   real(8) :: tij(0:16, ntrunc)
 contains
 
   subroutine init_cmt
-    use param, only: t, hour
+    use param, only: t, hour, day, c, alpha_bar
     integer i, j, nz
 
 
@@ -52,28 +52,67 @@ contains
     integer, parameter :: nz = 5
 
     ! work
-    real(8) :: uzg(lbound(tij,1):ubound(tij,1),size(u,2))
-    real(8), dimension(size(u, 2)) :: dumid, dulow
-    integer :: zs(size(u,2))
+    real(8) :: rate(size(u,2))
+    real(8) :: rands(size(u,2))
     real(8) :: pr
-    integer i, j
+    integer i, j, trand
+
+
+    ! compute transition rates
+    call trates(u, scmt, hd, rate)
+
+    if (any(rate < 0d0) ) then
+       print *, 'rate is less then zero... stop'
+       stop -1
+    end if
+
+    call random_number(rands)
+
+    do i=1,size(u,2)
+
+       ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
+       if (rate(i) > 1d-10) then
+          trand = -log(rands(i))/rate(i)
+          print *, rands(i)
+          if (trand < dt) then
+             scmt(i) = 1 - scmt(i)
+          end if
+       end if
+    end do
+
+  end subroutine updatecmt
+
+  subroutine trates(u, scmt, hd, rate)
+    real(8), intent(in) :: u(:,:), hd(:)
+    integer, intent(in) :: scmt(:)
+    real(8), intent(out) :: rate(:) ! probability rate of a switching
+
+    ! Work
+    real(8) :: uzg(lbound(tij,1):ubound(tij,1),size(u,2))
+    real(8) :: dumid, dulow
+    integer :: i
 
     ! Compute grid-space transformation
     uzg = matmul(tij, u)
 
-    do i=1,size(uzg,1)
-       call dulowmid(uzg(:,i), dulow(i), dumid(i))
+    do i=1,size(uzg,2)
+       call dulowmid(uzg(:,i), dulow, dumid)
+
+       if (scmt(i) == 0) then
+          if (dulow > dumin) then
+             rate(i) = exp(betau * abs(dulow)+ betaq * hd(i)) / taur
+          else
+             rate(i) = 0d0
+          end if
+       else if (scmt(i) == 1) then
+          rate(i) = exp(betau * (duref -abs(dulow)) + betaq * (hdref - hd(i)))/ taur
+       else
+          print *, 'Invalid value: scmt(', i, ') =', scmt(i)
+          stop -1
+       end if
+
     end do
 
-    ! compute transition rates
-
-
-
-  end subroutine updatecmt
-
-  subroutine trates(u, scmt, pr)
-    real(8), intent(in) :: u(:), scmt
-    real(8), intent(out)
   end subroutine trates
 
   subroutine dulowmid(uz, dulow, dumid)
