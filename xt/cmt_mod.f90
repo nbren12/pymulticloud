@@ -4,7 +4,11 @@ module cmt_mod
   private
 
   real(8) :: taur, betalam, betaq, betau, qcref, qdref, duref, dumin, d1, d2, tf
+
+  real(8) :: tij(0:16, 0:)
 contains
+  subroutine init
+  end subroutine init
 
   subroutine updatecmt(u, scmt, hd, hc, hs, dt)
     integer :: scmt(:)
@@ -12,7 +16,6 @@ contains
     real(8) :: dt
 
     integer, parameter :: nz = 5
-    logical :: first_call = .true.
 
     ! work
     real(8) :: uzg(nz,size(u,2)), duh(size(u,2)), dul(size(u,2))

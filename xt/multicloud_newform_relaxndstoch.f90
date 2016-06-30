@@ -7,7 +7,7 @@ use stochastic
 use util
 use forcings
 use nonlinear_module
-use state_mod
+use state_mod, only: n, fcls, fdls, fsls, scmt
 use cmt_mod
 IMPLICIT NONE
 INTEGER :: i, j, niter, iter,k,nout, iout,inrg
@@ -416,8 +416,8 @@ write(unit=snapshot_id) n
 uc = 0.0d0
 CALL initial_data(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,dx,l,p)
 !(u1,u2,theta1,theta2,theta_eb,q,hs,hc,N,DX,L,P)
+scmt = 1
 
-call initialize_scmt
 
 WRITE(35,*) 'DX=',dx
 WRITE(35,*)'P=',p
