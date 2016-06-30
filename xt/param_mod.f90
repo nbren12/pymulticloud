@@ -21,12 +21,4 @@ module param
   real(8) qr01,qr02,lambdabar,qcbar,dbar,  &
        theta_eb_m_theta_em,m0,theta_ebs_m_theta_eb,moist0,alpha4
 
-contains
-
-subroutine setup_param()
-! calculate values that depend on others
-    a=(1.d0-lambdas)/(thetap-thetam)
-    b=lambdas-a*thetam            !linear fit coefficients of lambda
-
-end subroutine
 end module param

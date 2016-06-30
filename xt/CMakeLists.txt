@@ -7,6 +7,7 @@ set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 SET ( SOURCES
   param_mod.f90
   state_mod.f90
+  cmt_mod.f90
   forcings.f90
   stochastic.f90 central_scheme_correct.f90
   util.f90 
