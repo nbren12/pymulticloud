@@ -4,8 +4,8 @@ module cmt_mod
   public :: updatecmt, init_cmt
   private
 
-  real(8) :: pi
-  real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d1, d2, tf
+  real(8) :: pi, sqrt2
+  real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0, tauf
 
   real(8) :: tij(0:16, ntrunc)
 contains
@@ -16,6 +16,7 @@ contains
 
 
     pi = atan(1d0) * 4d0
+    sqrt2 = sqrt(2.0d0)
     nz = size(tij,1)
 
     ! spectral to physical transformation matrix
@@ -36,11 +37,15 @@ contains
     hdref = 10d0/alpha_bar /(day/t)
 
     ! shear-based parameters
-    betau = 1d0/(5d0/c)
+    betau = 1d0/(10d0/c)
     print *, 'betau=', betau
-    dumin = 2d0/c
-    duref = 10d0/c
+    dumin = 5d0/c
+    duref = 20d0/c
 
+    ! damping and CMT strength
+    tauf = 1.25 * day / t
+    d0   = 1d0 / (3d0 * day/t)
+    print *, 'd0=', d0
 
   end subroutine init_cmt
 
@@ -49,15 +54,15 @@ contains
     integer :: scmt(:)
     real(8) :: u(:,:), hd(:), hc(:), hs(:)
     real(8) :: dt
+    intent(inout) u
 
     integer, parameter :: nz = 5
 
     ! work
-    real(8) :: rate(0:1,size(u,2))
+    real(8) :: rate(0:1, 0:1,size(u,2)), umid(size(u,2)), ulo(size(u,2))
     real(8) :: rands(size(u,2))
-    real(8) :: pr
-    integer i, j, trand
-
+    real(8), dimension(ntrunc) :: k1, k2 ,k3, k4
+    integer i, j
 
     ! compute transition rates
     call trates(u, scmt, hd, rate)
@@ -93,19 +98,65 @@ contains
 
     !! Equilibrium
     do i=1,size(u,2)
-       if ( rands(i) * sum(rates(:,i)) < rates(0,i)) then
+       if ( rands(i) * (rate(0,1,i) + rate(1,0,i) ) < rate(1,0,i)) then
           scmt(i) = 0
        else
           scmt(i) = 1
        end if
+
+       ! ! rk4
+       ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       ! call cmtforcing(u(:,i) + k1 * dt/2d0, hd(i), scmt(i), k2)
+       ! call cmtforcing(u(:,i) + k2 * dt/2d0, hd(i), scmt(i), k3)
+       ! call cmtforcing(u(:,i) + k3 * dt, hd(i), scmt(i), k4)
+
+       ! u(:,i) = u(:,i) + dt/6d0 *(k1+ 2d0 * k2 + 2d0*k3 + k4)
+
+       ! euler
+       call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       u(:,i) = u(:,i) + dt * k1
+       
+
     end do
 
+
+
+
   end subroutine updatecmt
+
+
+  subroutine cmtforcing(u, hd, scmt, fu)
+    real(8), intent(in) :: u(:)
+    real(8), intent(in) :: hd
+    integer, intent(in) :: scmt
+    real(8), intent(out) :: fu(:)
+
+    ! Work
+    real(8) :: ulo, umid, kappa
+
+
+    fu = 0d0
+
+    if (scmt == 0) then
+       fu = -u * d0
+    else if (scmt == 1) then
+       call dulowmid(u, ulo, umid)
+       if (umid * ulo < 0d0 ) then
+          kappa = -(hd/hdref)**2 * umid / tauf
+       else
+          kappa = 0d0
+       end if
+
+       fu(1) = kappa / sqrt2
+       fu(3) = -kappa/sqrt2
+    end if
+
+  end subroutine cmtforcing
 
   subroutine trates(u, scmt, hd, rate)
     real(8), intent(in) :: u(:,:), hd(:)
     integer, intent(in) :: scmt(:)
-    real(8), intent(out) :: rate(:,:) ! probability rate of a switching
+    real(8), intent(out) :: rate(0:, 0:,:) ! probability rate of a switching
 
     ! Work
     real(8) :: uzg(lbound(tij,1):ubound(tij,1),size(u,2))
@@ -119,12 +170,13 @@ contains
     do i=1,size(uzg,2)
        call dulowmid(uzg(:,i), dulow, dumid)
 
+
        if (dulow > dumin) then
-          rate(1,i) = exp(betau * abs(dulow)+ betaq * hd(i)) / taur
+          rate(0,1,i) = exp(betau * abs(dulow)+ betaq * hd(i)) / taur
        else
-          rate(1,i) = 0d0
+          rate(0,1,i) = 0d0
        end if
-       rate(2,i) = exp(betau * (duref -abs(dulow)) + betaq * (hdref - hd(i)))/ taur
+       rate(1, 0, i) = exp(betau * (duref -abs(dulow)) + betaq * (hdref - hd(i)))/ taur
     end do
 
   end subroutine trates

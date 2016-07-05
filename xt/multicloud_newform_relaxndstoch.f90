@@ -571,12 +571,12 @@ CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
 call vertical_advection_driver(uc, dx, 2d0*dt, n)
 
-! damping
-do i=1,n
-   do j = 1,ntrunc
-      uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
-   end do
-end do
+! damping (comment beacuse it is inside cmt)
+! do i=1,n
+!    do j = 1,ntrunc
+!       uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
+!    end do
+! end do
 
 ! split-in-time vertical advection
 
@@ -602,8 +602,6 @@ CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
     ,n, dx, 2.d0*dt*t/(hour) )
 dt=tempg
 
-call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
-
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
     ,2.d0*dt,thteb_st,time,hds,s1)
 dt=tempg
@@ -620,6 +618,7 @@ DO i=1,n
    uc(2*ntrunc+1,i) = q(i)
 END DO
 
+call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
 ! copy output to flux array for stochastic multicloud step
