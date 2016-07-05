@@ -1,11 +1,15 @@
 module cmt_mod
-  use state_mod, only: ntrunc
+  use state_mod, only: n, ntrunc
   implicit none
   public :: updatecmt, init_cmt
   private
 
+
+  ! storage arrays for adams-bashforth
+  real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0
+
   real(8) :: pi, sqrt2
-  real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0, tauf
+  real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0,dcmt,tauf
 
   real(8) :: tij(0:16, ntrunc)
 contains
@@ -43,9 +47,9 @@ contains
     duref = 20d0/c
 
     ! damping and CMT strength
-    tauf = 1.25 * day / t
+    dcmt = 1/(5d0 * day / t)
     d0   = 1d0 / (3d0 * day/t)
-    print *, 'd0=', d0
+    print *, 'd0=', d0, 'dcmt=', dcmt
 
   end subroutine init_cmt
 
@@ -109,16 +113,29 @@ contains
        ! call cmtforcing(u(:,i) + k1 * dt/2d0, hd(i), scmt(i), k2)
        ! call cmtforcing(u(:,i) + k2 * dt/2d0, hd(i), scmt(i), k3)
        ! call cmtforcing(u(:,i) + k3 * dt, hd(i), scmt(i), k4)
-
        ! u(:,i) = u(:,i) + dt/6d0 *(k1+ 2d0 * k2 + 2d0*k3 + k4)
 
-       ! euler
-       call cmtforcing(u(:,i), hd(i), scmt(i), k1)
-       u(:,i) = u(:,i) + dt * k1
+       ! ! euler
+       ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       ! u(:,i) = u(:,i) + dt * k1
+
+       ! ! trap
+       ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       ! call cmtforcing(u(:,i) + k1 *dt, hd(i), scmt(i), k2)
+       ! u(:,i) = u(:,i) + dt/2d0 * (k1 + k2)
        
+       ! ! AB-2
+       ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       ! call cmtforcing(uo1(:,i), hd(i), scmt(i), k2)
+       ! u(:,i) = u(:,i) + dt/2d0 * (3d0 * k1 - k2)
 
+       ! AB-3
+       call cmtforcing(u(:,i), hd(i), scmt(i), k1)
+       u(:,i) = u(:,i) + dt/12d0 * (23d0 * k1 - 16d0 * ko1(:,i) + 5d0*ko2(:,i))
+
+       ko2(:,i) = ko1(:,i)
+       ko1(:,i) = k1
     end do
-
 
 
 
@@ -140,9 +157,9 @@ contains
     if (scmt == 0) then
        fu = -u * d0
     else if (scmt == 1) then
-       call dulowmid(u, ulo, umid)
+       call dulowmid(matmul(tij,u), ulo, umid)
        if (umid * ulo < 0d0 ) then
-          kappa = -(hd/hdref)**2 * umid / tauf
+          kappa = -(hd/hdref)**2 * umid * dcmt
        else
           kappa = 0d0
        end if
