@@ -63,8 +63,6 @@ REAL*8 u1a(n),u2a(n),theta1a(n),theta2a(n),theta_eba(n)
 REAL*8 qa(n),hsa(n),hca(n),hda(n),fclsa(n),fdlsa(n),fslsa(n)
 REAL*8 twave_outa,twave_count2a,tenergya,twa
 
-call init_cmt
-
 
 
 nstochgl=nstochloc
@@ -318,7 +316,8 @@ tau30=tau30*taumult
 tau23= tau23*taumult
 
 
-call nondimensionalize_params()
+call nondimensionalize_params
+call init_cmt
 call calculate_rce()
 ! call check_srce()
 print *, 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
@@ -603,7 +602,7 @@ CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
     ,n, dx, 2.d0*dt*t/(hour) )
 dt=tempg
 
-call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, dt)
+call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
 
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
     ,2.d0*dt,thteb_st,time,hds,s1)

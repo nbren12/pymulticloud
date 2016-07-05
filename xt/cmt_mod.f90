@@ -68,12 +68,22 @@ contains
 
     call random_number(rands)
 
-    do i=1,size(u,2)
+    !! One step of Gillespie
+    ! do i=1,size(u,2)
 
+    !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
+    !    if (rate(i) > 1d-10) then
+    !       trand = -log(rands(i))/rate(i)
+    !       if (trand < dt) then
+    !          scmt(i) = 1 - scmt(i)
+    !       end if
+    !    end if
+    ! end do
+
+    !! Cheaper algorithm
+    do i=1,size(u,2)
        ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
-       if (rate(i) > 1d-10) then
-          trand = -log(rands(i))/rate(i)
-          print *, rands(i)
+       if (rate(i) *dt < rands(i)) then
           if (trand < dt) then
              scmt(i) = 1 - scmt(i)
           end if
@@ -89,12 +99,13 @@ contains
 
     ! Work
     real(8) :: uzg(lbound(tij,1):ubound(tij,1),size(u,2))
+    real(8) :: rands(size(u,2))
     real(8) :: dumid, dulow
     integer :: i
 
     ! Compute grid-space transformation
     uzg = matmul(tij, u)
-
+    rate = 0d0
     do i=1,size(uzg,2)
        call dulowmid(uzg(:,i), dulow, dumid)
 
