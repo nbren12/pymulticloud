@@ -668,6 +668,10 @@ IF(time >= (twave_count2+1)*tenergy) THEN
 
      write(unit=ufid)  uc(:,1:n)
 
+     open(unit=19, file='int.bin', position='append', status='unknown', form='unformatted')
+     write(19) scmt
+     close(19)
+
   else
       DO i=1,n
     

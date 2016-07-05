@@ -36,9 +36,10 @@ contains
     hdref = 10d0/alpha_bar /(day/t)
 
     ! shear-based parameters
-    betau = 1d0/(10d0/c)
-    dumin = 5d0/c
-    duref = 20d0/c
+    betau = 1d0/(5d0/c)
+    print *, 'betau=', betau
+    dumin = 2d0/c
+    duref = 10d0/c
 
 
   end subroutine init_cmt
@@ -52,7 +53,7 @@ contains
     integer, parameter :: nz = 5
 
     ! work
-    real(8) :: rate(size(u,2))
+    real(8) :: rate(0:1,size(u,2))
     real(8) :: rands(size(u,2))
     real(8) :: pr
     integer i, j, trand
@@ -81,12 +82,21 @@ contains
     ! end do
 
     !! Cheaper algorithm
+    ! do i=1,size(u,2)
+    !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
+    !    if (rate(i) *dt < rands(i)) then
+    !       if (trand < dt) then
+    !          scmt(i) = 1 - scmt(i)
+    !       end if
+    !    end if
+    ! end do
+
+    !! Equilibrium
     do i=1,size(u,2)
-       ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
-       if (rate(i) *dt < rands(i)) then
-          if (trand < dt) then
-             scmt(i) = 1 - scmt(i)
-          end if
+       if ( rands(i) * sum(rates(:,i)) < rates(0,i)) then
+          scmt(i) = 0
+       else
+          scmt(i) = 1
        end if
     end do
 
@@ -95,7 +105,7 @@ contains
   subroutine trates(u, scmt, hd, rate)
     real(8), intent(in) :: u(:,:), hd(:)
     integer, intent(in) :: scmt(:)
-    real(8), intent(out) :: rate(:) ! probability rate of a switching
+    real(8), intent(out) :: rate(:,:) ! probability rate of a switching
 
     ! Work
     real(8) :: uzg(lbound(tij,1):ubound(tij,1),size(u,2))
@@ -109,19 +119,12 @@ contains
     do i=1,size(uzg,2)
        call dulowmid(uzg(:,i), dulow, dumid)
 
-       if (scmt(i) == 0) then
-          if (dulow > dumin) then
-             rate(i) = exp(betau * abs(dulow)+ betaq * hd(i)) / taur
-          else
-             rate(i) = 0d0
-          end if
-       else if (scmt(i) == 1) then
-          rate(i) = exp(betau * (duref -abs(dulow)) + betaq * (hdref - hd(i)))/ taur
+       if (dulow > dumin) then
+          rate(1,i) = exp(betau * abs(dulow)+ betaq * hd(i)) / taur
        else
-          print *, 'Invalid value: scmt(', i, ') =', scmt(i)
-          stop -1
+          rate(1,i) = 0d0
        end if
-
+       rate(2,i) = exp(betau * (duref -abs(dulow)) + betaq * (hdref - hd(i)))/ taur
     end do
 
   end subroutine trates
