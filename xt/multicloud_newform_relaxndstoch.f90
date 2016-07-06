@@ -402,6 +402,11 @@ OPEN(UNIT=11,FILE='time_of_time_aver_out',STATUS='unknown')
 if ( BINARY_OUTPUT) then
         OPEN(UNIT=SNAPSHOT_ID, FILE = 'snap_shots',&
                 FORM = 'unformatted', access='stream', status="NEW")
+
+        open(unit=18, file='header.bin', form='unformatted', status='NEW')
+        write (18) n
+        write (18) ntrunc
+        close(18)
 else
         OPEN(UNIT=SNAPSHOT_ID,FILE='snap_shots',STATUS='unknown')
 endif
@@ -662,16 +667,26 @@ IF(time >= (twave_count2+1)*tenergy) THEN
   if (BINARY_OUTPUT) then
 
      WRITE(*,*) 'outputing snapshot at time', time * T / day
-     WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
-          alpha_bar *theta1, alpha_bar * theta2,  &
-          alpha_bar*theta_eb, &
-          alpha_bar * q,&
-          alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
-          alpha_bar/ (T / day) *DMAX1(0D0,hc), &
-          alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
-          fcls,fdls,fsls
+     ! WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
+     !      alpha_bar *theta1, alpha_bar * theta2,  &
+     !      alpha_bar*theta_eb, &
+     !      alpha_bar * q,&
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hc), &
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
+     !      fcls,fdls,fsls
 
-     write(unit=ufid)  uc(:,1:n)
+     open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted')
+     write(ufid) time
+     write(ufid) uc(:,1:n)
+     write(ufid) theta_eb
+     write(ufid) hc
+     write(ufid) hd
+     write(ufid) hs
+     write(ufid) fcls
+     write(ufid) fdls
+     write(ufid) fsls
+     close(ufid)
 
      open(unit=19, file='int.bin', position='append', status='unknown', form='unformatted')
      write(19) scmt
