@@ -4,6 +4,7 @@ module cmt_mod
   public :: updatecmt, init_cmt
   private
 
+  logical, parameter :: stochastic_cmt = .true.
 
   ! storage arrays for adams-bashforth
   real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0
@@ -69,44 +70,54 @@ contains
     integer i, j
 
     ! compute transition rates
-    call trates(u, scmt, hd, rate)
 
-    if (any(rate < 0d0) ) then
-       print *, 'rate is less then zero... stop'
-       stop -1
+    if (stochastic_cmt) then
+       call trates(u, scmt, hd, rate)
+
+       if (any(rate < 0d0) ) then
+          print *, 'rate is less then zero... stop'
+          stop -1
+       end if
+
+       call random_number(rands)
+
+       !! One step of Gillespie
+       ! do i=1,size(u,2)
+
+       !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
+       !    if (rate(i) > 1d-10) then
+       !       trand = -log(rands(i))/rate(i)
+       !       if (trand < dt) then
+       !          scmt(i) = 1 - scmt(i)
+       !       end if
+       !    end if
+       ! end do
+
+       !! Cheaper algorithm
+       ! do i=1,size(u,2)
+       !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
+       !    if (rate(i) *dt < rands(i)) then
+       !       if (trand < dt) then
+       !          scmt(i) = 1 - scmt(i)
+       !       end if
+       !    end if
+       ! end do
+
+       !! Equilibrium
+       do i=1,size(u,2)
+          if ( rands(i) * (rate(0,1,i) + rate(1,0,i) ) < rate(1,0,i)) then
+             scmt(i) = 0
+          else
+             scmt(i) = 1
+          end if
+       end do
+
+
+    else
+       scmt = 0
     end if
 
-    call random_number(rands)
-
-    !! One step of Gillespie
-    ! do i=1,size(u,2)
-
-    !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
-    !    if (rate(i) > 1d-10) then
-    !       trand = -log(rands(i))/rate(i)
-    !       if (trand < dt) then
-    !          scmt(i) = 1 - scmt(i)
-    !       end if
-    !    end if
-    ! end do
-
-    !! Cheaper algorithm
-    ! do i=1,size(u,2)
-    !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
-    !    if (rate(i) *dt < rands(i)) then
-    !       if (trand < dt) then
-    !          scmt(i) = 1 - scmt(i)
-    !       end if
-    !    end if
-    ! end do
-
-    !! Equilibrium
     do i=1,size(u,2)
-       if ( rands(i) * (rate(0,1,i) + rate(1,0,i) ) < rate(1,0,i)) then
-          scmt(i) = 0
-       else
-          scmt(i) = 1
-       end if
 
        ! ! rk4
        ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
@@ -123,7 +134,7 @@ contains
        ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
        ! call cmtforcing(u(:,i) + k1 *dt, hd(i), scmt(i), k2)
        ! u(:,i) = u(:,i) + dt/2d0 * (k1 + k2)
-       
+
        ! ! AB-2
        ! call cmtforcing(u(:,i), hd(i), scmt(i), k1)
        ! call cmtforcing(uo1(:,i), hd(i), scmt(i), k2)
@@ -135,6 +146,7 @@ contains
 
        ko2(:,i) = ko1(:,i)
        ko1(:,i) = k1
+
     end do
 
 

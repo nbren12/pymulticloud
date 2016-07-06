@@ -17,6 +17,9 @@ REAL*8 taumult ,nstochloc
 PARAMETER(nstochloc=30)
 PARAMETER(taumult=1.d0)
 
+! Toggles
+logical, parameter :: CMT_ON = .true.
+
 !     PROGNOSTIC VARIABLES
 REAL*8 u1(n),u2(n),theta1(n),theta2(n),  &
     q(n),theta_eb(n),hd(n),hs(n),hc(n),hds(n)
@@ -431,7 +434,7 @@ WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
 
 !       LSST : width of warm pool.
 
-asst=0.0d0;
+asst=0.5d0;
 lsst=EQ/l/8;
 !      Strength of the diurnal cycle in K
 dctime=0.d0*day/t;
@@ -571,12 +574,15 @@ CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
 call vertical_advection_driver(uc, dx, 2d0*dt, n)
 
-! damping (comment beacuse it is inside cmt)
-! do i=1,n
-!    do j = 1,ntrunc
-!       uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
-!    end do
-! end do
+if (.not. cmt_on) then
+   ! damping (comment beacuse it is inside cmt)
+   do i=1,n
+      do j = 1,ntrunc
+         uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
+      end do
+   end do
+
+end if
 
 ! split-in-time vertical advection
 
@@ -618,7 +624,7 @@ DO i=1,n
    uc(2*ntrunc+1,i) = q(i)
 END DO
 
-call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
+if (cmt_on) call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
 
 ! copy output to flux array for stochastic multicloud step

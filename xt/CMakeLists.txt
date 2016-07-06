@@ -3,6 +3,11 @@ project (HELLO Fortran)
 
 set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 
+if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-check bounds -traceback -g")
+endif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
+
+
 
 SET ( SOURCES
   param_mod.f90
@@ -10,7 +15,7 @@ SET ( SOURCES
   cmt_mod.f90
   forcings.f90
   stochastic.f90 central_scheme_correct.f90
-  util.f90 
+  util.f90
   duni.f
   multicloud_newform_relaxndstoch.f90
   )
