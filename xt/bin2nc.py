@@ -2,6 +2,7 @@
 """
 Usage:
   bin2nc.py plot FILE FIELD
+  bin2nc.py report FILE
 
 Arguments:
   FILE                output file
@@ -50,7 +51,20 @@ def read_output(name):
     head = read_header(name)
     data = np.memmap(name, dtype=my_dtype(head), offset=head['offset'])
 
-    return data
+    return head, data
+
+
+def report(name):
+    hr = 3600.0
+    day = hr * 24
+    km = 1000
+
+    head, data = read_output(name)
+
+    vars = [field for field in data.dtype.fields if data[field].ndim > 1]
+
+    x = np.arange(head['n']) * head['dx']/ 1000
+    print(x)
 
 
 if __name__ == '__main__':
@@ -58,7 +72,13 @@ if __name__ == '__main__':
     args = docopt(__doc__)
 
     if args['plot']:
-        data = read_output(args['FILE'])
-        from pylab import pcolormesh, show
+        head, data = read_output(args['FILE'])
+        from pylab import pcolormesh, show, colorbar, axis
         pcolormesh(data[args['FIELD']])
+        axis('tight')
+        colorbar()
         show()
+
+    if args['report']:
+        report(args['FILE'])
+

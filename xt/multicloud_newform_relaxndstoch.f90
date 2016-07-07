@@ -519,7 +519,7 @@ if ( BINARY_OUTPUT) then
    open(unit=18, file='real.bin', form='unformatted', status='NEW', access='stream')
    write (18) n
    write (18) ntrunc
-   write (18) dx
+   write (18) dx*L
    write (18) T
    write (18) L
    write (18) alpha_bar
@@ -681,14 +681,14 @@ IF(time >= (twave_count2+1)*tenergy) THEN
      !      fcls,fdls,fsls
 
      open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
-     write(ufid) time
-     write(ufid) uc(1:ntrunc,1:n)
-     write(ufid) uc(ntrunc+1:2*ntrunc,1:n)
-     write(ufid) uc(2*ntrunc+1,1:n)
-     write(ufid) theta_eb
-     write(ufid) hc
-     write(ufid) hd
-     write(ufid) hs
+     write(ufid) time * T/ day
+     write(ufid) uc(1:ntrunc,1:n) * c
+     write(ufid) uc(ntrunc+1:2*ntrunc,1:n) * alpha_bar
+     write(ufid) uc(2*ntrunc+1,1:n) * alpha_bar
+     write(ufid) theta_eb * alpha_bar
+     write(ufid) hc * alpha_bar/ (T / day)
+     write(ufid) hd * alpha_bar/ (T / day)
+     write(ufid) hs * alpha_bar/ (T / day)
      write(ufid) fcls
      write(ufid) fdls
      write(ufid) fsls
