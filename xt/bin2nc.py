@@ -11,9 +11,6 @@ Arguments:
 import struct
 from docopt import docopt
 import numpy as np
-from scipy.io import FortranFile
-
-docopt
 
 
 def read_header(name='real.bin'):
@@ -22,38 +19,31 @@ def read_header(name='real.bin'):
     with open(name, "rb") as f:
         s = struct.unpack_from(fmt, f.read(struct.calcsize(fmt)))
 
-
     out = dict(zip(('n', 'ntrunc', 'dx', 'T', 'L', 'abar'), s))
-    out['neq'] = 2*out['ntrunc'] + 1
     out['offset'] = struct.calcsize(fmt)
 
     return out
 
 
-
 def my_dtype(head):
 
     n = head['n']
-    neq = head['neq']
     ntrunc = head['ntrunc']
 
     mydt = np.dtype([('time', np.float64),
-                      ('u', np.float64, (n, ntrunc)),
-                      ('th', np.float64, (n, ntrunc)),
-                      ('q', np.float64, (n, )),
-                      ('teb', np.float64, (n, )),
-                      ('hc', np.float64, (n, )),
-                      ('hd', np.float64, (n, )),
-                      ('hs', np.float64, (n, )),
-                      ('fcls', np.float64, (n, )),
-                      ('fdls', np.float64, (n, )),
-                      ('fsls', np.float64, (n, )),
-                      ('scmt', np.int32, (n, ))])
-
+                     ('u', np.float64, (n, ntrunc)),
+                     ('th', np.float64, (n, ntrunc)),
+                     ('q', np.float64, (n, )),
+                     ('teb', np.float64, (n, )),
+                     ('hc', np.float64, (n, )),
+                     ('hd', np.float64, (n, )),
+                     ('hs', np.float64, (n, )),
+                     ('fcls', np.float64, (n, )),
+                     ('fdls', np.float64, (n, )),
+                     ('fsls', np.float64, (n, )),
+                     ('scmt', np.int32, (n, ))])
 
     return mydt
-
-
 
 
 def read_output(name):
@@ -67,9 +57,8 @@ if __name__ == '__main__':
 
     args = docopt(__doc__)
 
-
-    data = read_output(args['FILE'])
-
-    from pylab import pcolormesh, show
-    pcolormesh(data[args['FIELD']])
-    show()
+    if args['plot']:
+        data = read_output(args['FILE'])
+        from pylab import pcolormesh, show
+        pcolormesh(data[args['FIELD']])
+        show()
