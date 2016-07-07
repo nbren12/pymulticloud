@@ -399,18 +399,6 @@ OPEN(UNIT=18,FILE='time_aver_out',STATUS='unknown')
 !OPEN(UNIT=SNAPSHOT_ID,FILE='snap_shots',STATUS='unknown')
 OPEN(UNIT=11,FILE='time_of_time_aver_out',STATUS='unknown')
 
-if ( BINARY_OUTPUT) then
-        OPEN(UNIT=SNAPSHOT_ID, FILE = 'snap_shots',&
-                FORM = 'unformatted', access='stream', status="NEW")
-
-        open(unit=18, file='header.bin', form='unformatted', status='NEW')
-        write (18) n
-        write (18) ntrunc
-        close(18)
-else
-        OPEN(UNIT=SNAPSHOT_ID,FILE='snap_shots',STATUS='unknown')
-endif
-
 write(unit=snapshot_id) n
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -523,6 +511,22 @@ iter=0
 
 
 open(unit=GAUGE_ID, file='gauge')
+
+if ( BINARY_OUTPUT) then
+   OPEN(UNIT=SNAPSHOT_ID, FILE = 'snap_shots',&
+        FORM = 'unformatted', access='stream', status="NEW")
+
+   open(unit=18, file='real.bin', form='unformatted', status='NEW', access='stream')
+   write (18) n
+   write (18) ntrunc
+   write (18) dx
+   write (18) T
+   write (18) L
+   write (18) alpha_bar
+   close(18)
+else
+   OPEN(UNIT=SNAPSHOT_ID,FILE='snap_shots',STATUS='unknown')
+endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                                                         Begin Iterations                                                         !
@@ -676,9 +680,11 @@ IF(time >= (twave_count2+1)*tenergy) THEN
      !      alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
      !      fcls,fdls,fsls
 
-     open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted')
+     open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
      write(ufid) time
-     write(ufid) uc(:,1:n)
+     write(ufid) uc(1:ntrunc,1:n)
+     write(ufid) uc(ntrunc+1:2*ntrunc,1:n)
+     write(ufid) uc(2*ntrunc+1,1:n)
      write(ufid) theta_eb
      write(ufid) hc
      write(ufid) hd
@@ -686,11 +692,8 @@ IF(time >= (twave_count2+1)*tenergy) THEN
      write(ufid) fcls
      write(ufid) fdls
      write(ufid) fsls
+     write(ufid) scmt
      close(ufid)
-
-     open(unit=19, file='int.bin', position='append', status='unknown', form='unformatted')
-     write(19) scmt
-     close(19)
 
   else
       DO i=1,n
