@@ -561,7 +561,7 @@ END IF
 !                                                       Step Forward in Time                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-i = 500
+i = 50
 WRITE(GAUGE_ID, 103) time * t / day,c* u1(i),c*u2(i), alpha_bar * theta1(i),alpha_bar * theta2(i),  &
     alpha_bar * theta_eb(i), q(i), &
     alpha_bar/t *day* DMAX1(0.00000000000001D0,hs(i)),  &

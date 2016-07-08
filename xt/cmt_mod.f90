@@ -18,6 +18,7 @@ contains
   subroutine init_cmt
     use param, only: t, hour, day, c, alpha_bar
     integer i, j, nz
+    real(8) mult
 
 
     pi = atan(1d0) * 4d0
@@ -42,13 +43,14 @@ contains
     hdref = 10d0/alpha_bar /(day/t)
 
     ! shear-based parameters
-    betau = 1d0/(10d0/c)
+    mult = .5
+    betau = 1d0/(10d0*mult/c)
     print *, 'betau=', betau
-    dumin = 5d0/c
-    duref = 20d0/c
+    dumin = 5d0/c * mult
+    duref = 20d0/c * mult
 
     ! damping and CMT strength
-    dcmt = 1/(5d0 * day / t)
+    dcmt = 1/(1.25d0 * day / t)
     d0   = 1d0 / (3d0 * day/t)
     print *, 'd0=', d0, 'dcmt=', dcmt
 
