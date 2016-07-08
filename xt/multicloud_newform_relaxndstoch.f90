@@ -366,7 +366,7 @@ dt_max =1.d0*minute/t
 
 
 
-tend =  50.0d0 *day/t
+tend =  200.0d0 *day/t
 
 niter=tend/dt_max
 nout=1
@@ -427,7 +427,7 @@ WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
 
 !       LSST : width of warm pool.
 
-asst=0.5d0;
+asst=0.0d0;
 lsst=EQ/l/8;
 !      Strength of the diurnal cycle in K
 dctime=0.d0*day/t;
@@ -671,14 +671,14 @@ IF(time >= (twave_count2+1)*tenergy) THEN
   if (BINARY_OUTPUT) then
 
      WRITE(*,*) 'outputing snapshot at time', time * T / day
-     ! WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
-     !      alpha_bar *theta1, alpha_bar * theta2,  &
-     !      alpha_bar*theta_eb, &
-     !      alpha_bar * q,&
-     !      alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
-     !      alpha_bar/ (T / day) *DMAX1(0D0,hc), &
-     !      alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
-     !      fcls,fdls,fsls
+     WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
+          alpha_bar *theta1, alpha_bar * theta2,  &
+          alpha_bar*theta_eb, &
+          alpha_bar * q,&
+          alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
+          alpha_bar/ (T / day) *DMAX1(0D0,hc), &
+          alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
+          fcls,fdls,fsls
 
      open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
      write(ufid) time * T/ day

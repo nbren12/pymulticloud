@@ -13,6 +13,11 @@ import struct
 from docopt import docopt
 import numpy as np
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+from mpl_toolkits.axes_grid1 import ImageGrid
+
+
 
 def read_header(name='real.bin'):
 
@@ -55,16 +60,75 @@ def read_output(name):
 
 
 def report(name):
+    plt.rc('axes.formatter', limits=(-3,3), use_mathtext=True)
     hr = 3600.0
     day = hr * 24
     km = 1000
 
     head, data = read_output(name)
 
-    vars = [field for field in data.dtype.fields if data[field].ndim > 1]
 
-    x = np.arange(head['n']) * head['dx']/ 1000
-    print(x)
+    x = np.arange(head['n']) * head['dx']/ 1000/1000
+    xticks = [0, 10, 20, 30]
+    t = data['time']
+
+    figheight=t.max()/50* 2.5
+    width = 7
+
+    # velocity
+    fig = plt.figure(1, (width, figheight))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(1, 4),  # creates 2x2 grid of axes
+                     cbar_mode='single',
+                     aspect=False)
+
+
+    for i in range(4):
+        cs = grid[i].contourf(x, data['time'], data['u'][...,i], 21, cmap='bwr')
+        grid.cbar_axes[i].colorbar(cs)
+        grid[i].set_title(r'$u_{i}$'.format(i=i+1))
+        grid[i].set_xticks(xticks)
+
+
+    # temperature
+    fig = plt.figure(2, (width, figheight))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(1, 4),  # creates 2x2 grid of axes
+                     cbar_mode='single',
+                     aspect=False)
+
+    for i in range(4):
+        cs = grid[i].contourf(x, data['time'], data['th'][...,i], 21, cmap='bwr')
+        grid.cbar_axes[i].colorbar(cs)
+        grid[i].set_title(r'$\theta_{i}$'.format(i=i+1))
+        grid[i].set_xticks(xticks)
+
+
+    # thermo
+    fig = plt.figure(3, (width, figheight))
+    grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                     nrows_ncols=(1, 5),  # creates 2x2 grid of axes
+                     cbar_mode='each',
+                     cbar_location='top',
+                     aspect=False)
+
+    for i, field in enumerate(['teb', 'q', 'hc', 'hd', 'hs']):
+        if field in ['hc', 'hd', 'hs']:
+            cmap = 'YlGnBu_r'
+        else:
+            cmap = 'bwr'
+        cs = grid[i].contourf(x, data['time'], data[field], 21, cmap=cmap)
+        cb = grid.cbar_axes[i].colorbar(cs)
+        cb.locator = plt.MaxNLocator(4)
+        plt.text(.1, .1, field, transform=grid[i].transAxes, bbox=dict(color='w'))
+        grid[i].set_xticks(xticks)
+
+    plt.figure(figsize=(2, figheight))
+    plt.pcolormesh(x, data['time'], data['scmt'], cmap=cmap)
+    plt.gca().set_xticks(xticks)
+    plt.axis('tight')
+
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -74,7 +138,12 @@ if __name__ == '__main__':
     if args['plot']:
         head, data = read_output(args['FILE'])
         from pylab import pcolormesh, show, colorbar, axis
-        pcolormesh(data[args['FIELD']])
+
+        x = np.arange(head['n']) * head['dx']/ 1000/1000
+        xticks = [0, 10, 20, 30]
+        t = data['time']
+
+        pcolormesh(x, t, data[args['FIELD']])
         axis('tight')
         colorbar()
         show()
