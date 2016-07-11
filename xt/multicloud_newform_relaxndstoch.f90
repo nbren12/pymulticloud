@@ -440,11 +440,11 @@ read(8,nml=data)
 tend = tend * day / t
 tenergy = tenergy * hour/t
 
-WRITE(35,*)'data output frequency for waves:', tenergy*t/hour,' hours'
-WRITE(35,*)'total run time', tend*t/day,'days'
-write(35, *) 'asst=', asst
-write(35, *) 'toggle_nonlinear=', toggle_nonlinear
-write(35, *) 'stochastic_cmt=', stochastic_cmt
+print *, 'data output frequency for waves:', tenergy*t/hour,' hours'
+print *, 'total run time', tend*t/day,'days'
+print *, 'asst=', asst
+print *, 'toggle_nonlinear=', toggle_nonlinear
+print *, 'stochastic_cmt=', stochastic_cmt
 close(8)
 !        SEPT in BD (non dim units)
 
@@ -561,6 +561,22 @@ END DO
 
 
 dt = DMIN1(0.9*dx/umax,dt_max)/2d0
+
+
+! Abort conditions
+if (dt < 1d0/t) then
+   print *, 'Timestep too small'
+   print *, 'Aborting run!!!!'
+   stop 9
+end if
+   do i=1,n
+      if (uc(1,i) /= uc(1,i)) then
+         print *, 'NA in velocity field'
+         print *, 'Aborting run!!!!'
+
+         stop 9
+      end if
+   end do
 
 IF(iter == 1)THEN
   WRITE(35,*)' Initial Time step =', 2*dt*t/minute, 'minutes  iter=',     iter
@@ -812,6 +828,7 @@ close(SNAPSHOT_ID)
     e25.15,1X,e25.15,1X,e25.15,1X,e25.15,1X,e25.15,1X)
 
 CONTAINS
+
 
 subroutine nondimensionalize_params()
 
