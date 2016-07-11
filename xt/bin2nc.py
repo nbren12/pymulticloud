@@ -9,6 +9,7 @@ Arguments:
   FIELD               field to plot
 
 """
+import os
 import struct
 from docopt import docopt
 import numpy as np
@@ -68,11 +69,14 @@ def report(name):
     head, data = read_output(name)
 
 
+    wd = os.getcwd()
+    os.chdir(os.path.dirname(name))
+
     x = np.arange(head['n']) * head['dx']/ 1000/1000
     xticks = [0, 10, 20, 30]
     t = data['time']
 
-    figheight=t.max()/50* 2.5
+    figheight= 9
     width = 7
 
     # velocity
@@ -89,6 +93,10 @@ def report(name):
         grid[i].set_title(r'$u_{i}$'.format(i=i+1))
         grid[i].set_xticks(xticks)
 
+    plt.tight_layout()
+    plt.subplots_adjust(right=.94)
+    fig.savefig("velocity.png")
+
 
     # temperature
     fig = plt.figure(2, (width, figheight))
@@ -103,6 +111,9 @@ def report(name):
         grid[i].set_title(r'$\theta_{i}$'.format(i=i+1))
         grid[i].set_xticks(xticks)
 
+    plt.tight_layout()
+    plt.subplots_adjust(right=.91, top=.96)
+    fig.savefig("temp.png")
 
     # thermo
     fig = plt.figure(3, (width, figheight))
@@ -123,12 +134,19 @@ def report(name):
         plt.text(.1, .1, field, transform=grid[i].transAxes, bbox=dict(color='w'))
         grid[i].set_xticks(xticks)
 
+    plt.tight_layout()
+    plt.subplots_adjust(top=.96)
+    fig.savefig("thermo.png")
+
     plt.figure(figsize=(2, figheight))
+
     plt.pcolormesh(x, data['time'], data['scmt'], cmap=cmap)
     plt.gca().set_xticks(xticks)
     plt.axis('tight')
+    plt.savefig("scmt.png")
 
-    plt.show()
+    os.chdir(wd)
+
 
 
 if __name__ == '__main__':
