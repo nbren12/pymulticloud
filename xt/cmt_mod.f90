@@ -1,10 +1,10 @@
 module cmt_mod
   use state_mod, only: n, ntrunc
   implicit none
-  public :: updatecmt, init_cmt
+  public :: updatecmt, init_cmt, stochastic_cmt
   private
 
-  logical, parameter :: stochastic_cmt = .true.
+  logical :: stochastic_cmt = .false.
 
   ! storage arrays for adams-bashforth
   real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0
@@ -13,6 +13,8 @@ module cmt_mod
   real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0,dcmt,tauf
 
   real(8) :: tij(0:16, ntrunc)
+
+
 contains
 
   subroutine init_cmt
@@ -43,7 +45,7 @@ contains
     hdref = 10d0/alpha_bar /(day/t)
 
     ! shear-based parameters
-    mult = .5
+    mult = 2.0d0
     betau = 1d0/(10d0*mult/c)
     print *, 'betau=', betau
     dumin = 5d0/c * mult
@@ -52,6 +54,10 @@ contains
     ! damping and CMT strength
     dcmt = 1/(1.25d0 * day / t)
     d0   = 1d0 / (3d0 * day/t)
+
+
+
+    ! namelist
     print *, 'd0=', d0, 'dcmt=', dcmt
 
   end subroutine init_cmt

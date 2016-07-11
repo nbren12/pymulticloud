@@ -56,7 +56,7 @@ REAL*8 theta_embar
 REAL*8 theta_ebs, theta_ebbar
 
 REAL*8 u1_av(n),u2_av(n),tht1_av(n),tht2_av(n),tht_eb_av(n),  &
-    q_av(n),hs_av(n),hc_av(n),twave_count,twave,twave_out, pr0_av(n),hd_av(n),  &
+    q_av(n),hs_av(n),hc_av(n),twave_count,twave_out, pr0_av(n),hd_av(n),  &
     lambda_av(n),lambda,tht_eb_tht_em,pr0
 
 
@@ -65,6 +65,8 @@ REAL*8 u1_av(n),u2_av(n),tht1_av(n),tht2_av(n),tht_eb_av(n),  &
 REAL*8 u1a(n),u2a(n),theta1a(n),theta2a(n),theta_eba(n)
 REAL*8 qa(n),hsa(n),hca(n),hda(n),fclsa(n),fdlsa(n),fslsa(n)
 REAL*8 twave_outa,twave_count2a,tenergya,twa
+
+namelist /data/ tend, tenergy, asst, toggle_nonlinear, stochastic_cmt
 
 
 
@@ -366,7 +368,8 @@ dt_max =1.d0*minute/t
 
 
 
-tend =  200.0d0 *day/t
+
+! tend =  200.0d0 *day/t
 
 niter=tend/dt_max
 nout=1
@@ -379,15 +382,6 @@ twave_outa=tend-100.d0*day/t
 tenergy= (3.d0)*hour/t
 ! twave_out= 000.d0*day/t
 
-
-
-twave = tenergy
-
-WRITE(35,*)'tend:', tend*t/hour,' hours'
-WRITE(35,*)'tout:', tout*t/hour,' hours'
-WRITE(35,*)'tenergy:', tenergy*t/hour,' hours'
-
-WRITE(35,*)'data output frequency for waves:', twave*t/hour,' hours'
 
 
 iout=0
@@ -427,7 +421,7 @@ WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
 
 !       LSST : width of warm pool.
 
-asst=0.0d0;
+asst=0.5d0;
 lsst=EQ/l/8;
 !      Strength of the diurnal cycle in K
 dctime=0.d0*day/t;
@@ -437,6 +431,21 @@ dtype=2;
 
 
 
+! open(8, file='input.nml', status='new')
+! write(8,nml=data)
+! close(8)
+open(8, file='input.nml', status='old')
+read(8,nml=data)
+
+tend = tend * day / t
+tenergy = tenergy * hour/t
+
+WRITE(35,*)'data output frequency for waves:', tenergy*t/hour,' hours'
+WRITE(35,*)'total run time', tend*t/day,'days'
+write(35, *) 'asst=', asst
+write(35, *) 'toggle_nonlinear=', toggle_nonlinear
+write(35, *) 'stochastic_cmt=', stochastic_cmt
+close(8)
 !        SEPT in BD (non dim units)
 
 OPEN(UNIT=36,FILE='sst',STATUS='unknown')
@@ -670,15 +679,15 @@ IF(time >= (twave_count2+1)*tenergy) THEN
   
   if (BINARY_OUTPUT) then
 
-     WRITE(*,*) 'outputing snapshot at time', time * T / day
-     WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
-          alpha_bar *theta1, alpha_bar * theta2,  &
-          alpha_bar*theta_eb, &
-          alpha_bar * q,&
-          alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
-          alpha_bar/ (T / day) *DMAX1(0D0,hc), &
-          alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
-          fcls,fdls,fsls
+     print *,  'outputing snapshot at time', time * T / day
+     ! WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
+     !      alpha_bar *theta1, alpha_bar * theta2,  &
+     !      alpha_bar*theta_eb, &
+     !      alpha_bar * q,&
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hs),  &
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hc), &
+     !      alpha_bar/ (T / day) *DMAX1(0D0,hd),  &
+     !      fcls,fdls,fsls
 
      open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
      write(ufid) time * T/ day
@@ -746,14 +755,14 @@ END IF
 
 
 
-IF(time >= (iout+1)*tout) THEN
+! IF(time >= (iout+1)*tout) THEN
   
-  WRITE(35,*)'Time step=', 2*dt*t/minute,' minutes',' iter=',iter
-  iout=iout+1
-  WRITE(35,*)'iout=',iout,' time=',time*t/hour,' hours'
-  CALL output(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n,iout)
+!   WRITE(35,*)'Time step=', 2*dt*t/minute,' minutes',' iter=',iter
+!   iout=iout+1
+!   WRITE(35,*)'iout=',iout,' time=',time*t/hour,' hours'
+!   CALL output(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n,iout)
   
-END IF
+! END IF
 IF(time < tend) GO TO 10
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                                                    End Iterations...Finish up                                                    !

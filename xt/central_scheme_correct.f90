@@ -4,7 +4,7 @@
 module nonlinear_module
   implicit none
 
-  logical, parameter :: toggle_nonlinear = .true.
+  logical :: toggle_nonlinear = .true.
   integer, parameter :: ntrunc = 4
 contains
 
