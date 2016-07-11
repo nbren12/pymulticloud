@@ -3,6 +3,7 @@
 Usage:
   bin2nc.py plot FILE FIELD
   bin2nc.py report FILE
+  bin2nc.py FILE
 
 Arguments:
   FILE                output file
@@ -166,6 +167,8 @@ if __name__ == '__main__':
         colorbar()
         show()
 
-    if args['report']:
+    elif args['report']:
         report(args['FILE'])
+    else:
+        print(read_output(args['FILE'])[0])
 

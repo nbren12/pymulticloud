@@ -1,7 +1,7 @@
 module state_mod
   implicit none
   integer, parameter :: dp = kind(0.0d0)
-  integer, parameter :: n = 520, ntrunc=4
+  integer, parameter :: n = 1040, ntrunc=4
 
 
 

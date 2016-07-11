@@ -45,9 +45,8 @@ contains
     hdref = 10d0/alpha_bar /(day/t)
 
     ! shear-based parameters
-    mult = 2.0d0
+    mult = 1.0d0
     betau = 1d0/(10d0*mult/c)
-    print *, 'betau=', betau
     dumin = 5d0/c * mult
     duref = 20d0/c * mult
 
@@ -59,6 +58,7 @@ contains
 
     ! namelist
     print *, 'd0=', d0, 'dcmt=', dcmt
+    print * ,'betau, dumin, duref', betau, dumin, duref
 
   end subroutine init_cmt
 
