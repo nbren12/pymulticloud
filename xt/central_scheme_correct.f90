@@ -4,8 +4,7 @@
 module nonlinear_module
   implicit none
 
-  logical :: toggle_nonlinear = .true.
-  integer, parameter :: ntrunc = 4
+  logical :: toggle_nonlinear = .false.
 contains
 
   subroutine vertical_advection_temp(w,t,f)
@@ -53,10 +52,10 @@ contains
 
   end subroutine vertical_advection_u
 
-  subroutine vertical_advection_tendency(uc, f, dx,dt)
+  subroutine vertical_advection_tendency(uc, f, dx,dt, ntrunc)
     real(8) uc(:,-1:)
     real(8) dx, dt
-    integer i, j, n
+    integer i, j, n, ntrunc
 
     real(8) f(:,:), w(ntrunc), temp(ntrunc)
 
@@ -81,26 +80,26 @@ contains
 
   end subroutine vertical_advection_tendency
 
-  subroutine vertical_advection_driver(uc, dx, dt, n)
+  subroutine vertical_advection_driver(uc, dx, dt, n, ntrunc)
+    integer n, ntrunc
     real(8) uc(2*ntrunc+1,-1:n+2), dx,dt
-    integer n
 
     real(8) f(size(uc,1), size(uc,2), 2)
 
     if (toggle_nonlinear) then
-       call vertical_advection_tendency(uc, f(:,:,1), dx, dt)
+       call vertical_advection_tendency(uc, f(:,:,1), dx, dt, ntrunc)
 
        uc = uc + dt * f(:,:,1)
 
-       call vertical_advection_tendency(uc, f(:,:,2), dx, dt)
+       call vertical_advection_tendency(uc, f(:,:,2), dx, dt, ntrunc)
        uc = uc + dt/2d0 * (f(:,:,2) - f(:,:,1))
     end if
 
   end subroutine vertical_advection_driver
 
-  subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
+  subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
     implicit none
-    integer n, i,j
+    integer n, i,j, ntrunc
 
     real(8) uc(2*ntrunc+1,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, fc(2*ntrunc+1,-1:n+2)
     real(8) ux(2*ntrunc+1,0:n+1),lmd, lmd_2,u_stag(2*ntrunc+1,-1:n+2) ,nlt
@@ -205,14 +204,14 @@ contains
 
 
     integer m, i, L
-    real(8) theta(ntrunc), q
-    real(8) ftheta(ntrunc), fq
+    real(8), dimension((size(u,1)-1)/2) :: ftheta, theta
+    real(8) ::  fq, q
 
 
-    L = ntrunc
+    L = ( size(u,1)-1 )/2
 
 
-    do m=1,ntrunc
+    do m=1,L
        theta(m) = u(m+L)
     end do
 
@@ -222,7 +221,7 @@ contains
     ftheta = 0.0d0
     fq = 0.0d0
 
-    do m=1,ntrunc
+    do m=1,L
 
        if (toggle_nonlinear) then
 
@@ -266,7 +265,7 @@ contains
     fq  = q_tld * (u(1) + lmd_tld * u(2)) + q *(u(1) + alpha_tld * u(2))
 
 
-    do m=1,ntrunc
+    do m=1,L
        f(L+m) = ftheta(m)
     end do
 

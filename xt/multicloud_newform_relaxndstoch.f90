@@ -7,7 +7,7 @@ use stochastic
 use util
 use forcings
 use nonlinear_module
-use state_mod, only: n, fcls, fdls, fsls, scmt
+use state_mod, only: n, ntrunc, fcls, fdls, fsls, scmt
 use cmt_mod
 IMPLICIT NONE
 INTEGER :: i, j, niter, iter,k,nout, iout,inrg
@@ -604,9 +604,9 @@ DO i=1,n
       uc(2*ntrunc+1,i) = q(i)
 END DO
 
-CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
+CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
 
-call vertical_advection_driver(uc, dx, 2d0*dt, n)
+call vertical_advection_driver(uc, dx, 2d0*dt, n, ntrunc)
 
 if (.not. cmt_on) then
    ! damping (comment beacuse it is inside cmt)
@@ -659,7 +659,7 @@ DO i=1,n
 END DO
 
 if (cmt_on) call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
-CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld)
+CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
 
 ! copy output to flux array for stochastic multicloud step
 ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m
