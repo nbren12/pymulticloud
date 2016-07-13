@@ -67,6 +67,9 @@ def report(name):
     day = hr * 24
     km = 1000
 
+
+    if os.path.dirname(name) == '':
+        name = os.path.join(os.getcwd(), name)
     head, data = read_output(name)
 
 
