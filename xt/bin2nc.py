@@ -3,6 +3,7 @@
 Usage:
   bin2nc.py plot FILE FIELD
   bin2nc.py report FILE
+  bin2nc.py column FILE
   bin2nc.py FILE
 
 Arguments:
@@ -14,11 +15,6 @@ import os
 import struct
 from docopt import docopt
 import numpy as np
-
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-from mpl_toolkits.axes_grid1 import ImageGrid
-
 
 
 def read_header(name='real.bin'):
@@ -55,32 +51,82 @@ def my_dtype(head):
 
 
 def read_output(name):
+    """Open bin file"""
     head = read_header(name)
     data = np.memmap(name, dtype=my_dtype(head), offset=head['offset'])
 
     return head, data
 
 
+def output2xarray(head, data):
+    import xarray as xr
+
+    x = np.arange(head['n']) * head['dx'] / 1000 / 1000
+    m = np.arange(1, head['ntrunc'] + 1)
+    xticks = [0, 10, 20, 30]
+    t = data['time']
+
+    coords = {'x': x, 'm': m, 'time':t}
+    xrdict = {}
+
+
+    for field in data.dtype.fields:
+        if field == 'time':
+            pass
+        elif data[field].shape == (t.shape[0], x.shape[0], m.shape[0]):
+            xrdict[field] = (['time', 'x', 'm'], data[field])
+        elif data[field].shape == (t.shape[0], x.shape[0]):
+            xrdict[field] = (['time', 'x'], data[field])
+
+
+    return xr.Dataset(xrdict, coords)
+
+
+def column_report(name):
+    import matplotlib.pyplot as plt
+    
+    xr = output2xarray(*read_output(name))
+
+    fig, axs = plt.subplots(5,1,sharex=True)
+
+    xr.scmt.plot(ax=axs[0])
+
+
+    for i in range(xr.m.shape[0]):
+      xr.u.isel(m=i).plot(ax=axs[1])
+      xr.th.isel(m=i).plot(ax=axs[2])
+
+
+    xr.teb.plot(ax=axs[3])
+    xr.q.plot(ax=axs[3])
+
+    xr.hc.plot(ax=axs[4])
+    xr.hd.plot(ax=axs[4])
+    xr.hs.plot(ax=axs[4])
+
+    axs[0].set_xlim([xr.time.min(), xr.time.max()])
+
+    plt.show()
+
+
 def report(name):
-    plt.rc('axes.formatter', limits=(-3,3), use_mathtext=True)
+    plt.rc('axes.formatter', limits=(-3, 3), use_mathtext=True)
     hr = 3600.0
     day = hr * 24
     km = 1000
-
 
     if os.path.dirname(name) == '':
         name = os.path.join(os.getcwd(), name)
     head, data = read_output(name)
 
-
     wd = os.getcwd()
     os.chdir(os.path.dirname(name))
 
-    x = np.arange(head['n']) * head['dx']/ 1000/1000
+    x = np.arange(head['n']) * head['dx'] / 1000 / 1000
     xticks = [0, 10, 20, 30]
     t = data['time']
 
-    figheight= 9
+    figheight = 9
     width = 7
 
     # velocity
@@ -90,17 +136,19 @@ def report(name):
                      cbar_mode='single',
                      aspect=False)
 
-
     for i in range(4):
-        cs = grid[i].contourf(x, data['time'], data['u'][...,i], 21, cmap='bwr')
+        cs = grid[i].contourf(x,
+                              data['time'],
+                              data['u'][..., i],
+                              21,
+                              cmap='bwr')
         grid.cbar_axes[i].colorbar(cs)
-        grid[i].set_title(r'$u_{i}$'.format(i=i+1))
+        grid[i].set_title(r'$u_{i}$'.format(i=i + 1))
         grid[i].set_xticks(xticks)
 
     plt.tight_layout()
     plt.subplots_adjust(right=.94)
     fig.savefig("velocity.png")
-
 
     # temperature
     fig = plt.figure(2, (width, figheight))
@@ -110,9 +158,13 @@ def report(name):
                      aspect=False)
 
     for i in range(4):
-        cs = grid[i].contourf(x, data['time'], data['th'][...,i], 21, cmap='bwr')
+        cs = grid[i].contourf(x,
+                              data['time'],
+                              data['th'][..., i],
+                              21,
+                              cmap='bwr')
         grid.cbar_axes[i].colorbar(cs)
-        grid[i].set_title(r'$\theta_{i}$'.format(i=i+1))
+        grid[i].set_title(r'$\theta_{i}$'.format(i=i + 1))
         grid[i].set_xticks(xticks)
 
     plt.tight_layout()
@@ -135,7 +187,11 @@ def report(name):
         cs = grid[i].contourf(x, data['time'], data[field], 21, cmap=cmap)
         cb = grid.cbar_axes[i].colorbar(cs)
         cb.locator = plt.MaxNLocator(4)
-        plt.text(.1, .1, field, transform=grid[i].transAxes, bbox=dict(color='w'))
+        plt.text(.1,
+                 .1,
+                 field,
+                 transform=grid[i].transAxes,
+                 bbox=dict(color='w'))
         grid[i].set_xticks(xticks)
 
     plt.tight_layout()
@@ -152,8 +208,10 @@ def report(name):
     os.chdir(wd)
 
 
-
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+    from mpl_toolkits.axes_grid1 import ImageGrid
 
     args = docopt(__doc__)
 
@@ -161,7 +219,7 @@ if __name__ == '__main__':
         head, data = read_output(args['FILE'])
         from pylab import pcolormesh, show, colorbar, axis
 
-        x = np.arange(head['n']) * head['dx']/ 1000/1000
+        x = np.arange(head['n']) * head['dx'] / 1000 / 1000
         xticks = [0, 10, 20, 30]
         t = data['time']
 
@@ -172,6 +230,7 @@ if __name__ == '__main__':
 
     elif args['report']:
         report(args['FILE'])
+    elif args['column']:
+        column_report(args['FILE'])
     else:
         print(read_output(args['FILE'])[0])
-
