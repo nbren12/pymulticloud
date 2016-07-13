@@ -322,7 +322,7 @@ tau23= tau23*taumult
 
 
 call nondimensionalize_params
-call init_cmt
+call init_cmt(n, ntrunc)
 call calculate_rce()
 ! call check_srce()
 print *, 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq

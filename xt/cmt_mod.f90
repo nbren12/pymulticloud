@@ -1,5 +1,4 @@
 module cmt_mod
-  use state_mod, only: n, ntrunc
   implicit none
   public :: updatecmt, init_cmt, stochastic_cmt
   private
@@ -7,25 +6,32 @@ module cmt_mod
   logical :: stochastic_cmt = .false.
 
   ! storage arrays for adams-bashforth
-  real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0
+  ! real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0
+  real(8), dimension(:,:), allocatable :: ko1, ko2, tij
 
   real(8) :: pi, sqrt2
   real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0,dcmt,tauf
 
-  real(8) :: tij(0:16, ntrunc)
 
 
 contains
 
-  subroutine init_cmt
+  subroutine init_cmt(n, ntrunc)
     use param, only: t, hour, day, c, alpha_bar
+    integer, intent(in) :: n, ntrunc
+
     integer i, j, nz
     real(8) mult
 
-
+    ! allocate arrays
+    allocate(tij(0:16, ntrunc))
+    allocate(ko1(ntrunc, n))
+    allocate(ko2(ntrunc, n))
+    
     pi = atan(1d0) * 4d0
     sqrt2 = sqrt(2.0d0)
     nz = size(tij,1)
+
 
     ! spectral to physical transformation matrix
     do j=lbound(tij,2),ubound(tij,2)
@@ -74,7 +80,7 @@ contains
     ! work
     real(8) :: rate(0:1, 0:1,size(u,2)), umid(size(u,2)), ulo(size(u,2))
     real(8) :: rands(size(u,2))
-    real(8), dimension(ntrunc) :: k1, k2 ,k3, k4
+    real(8), dimension(size(u,1)) :: k1, k2 ,k3, k4
     integer i, j
 
     ! compute transition rates

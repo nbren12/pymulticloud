@@ -17,11 +17,14 @@ SET ( SOURCES
   stochastic.f90 central_scheme_correct.f90
   util.f90
   duni.f
-  multicloud_newform_relaxndstoch.f90
   )
 
 add_subdirectory (ext)
+add_executable ( mcnde ${SOURCES} multicloud_newform_relaxndstoch.f90)
 
-add_executable ( mcnde ${SOURCES} )
+add_executable ( column ${SOURCES} column_wrapper.f90)
+
 target_link_libraries (mcnde minpack)
-target_link_libraries (mcnde rk)
+# target_link_libraries (mcnde rk)
+
+target_link_libraries (column minpack)
