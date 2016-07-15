@@ -411,9 +411,9 @@ write(unit=snapshot_id) n
 uc = 0.0d0
 CALL initial_data(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,dx,l,p)
 !(u1,u2,theta1,theta2,theta_eb,q,hs,hc,N,DX,L,P)
-scmt = 1
-u1 = 10d0/c
-u2 = -10d0/c
+scmt = 2
+u1 = 15d0/c
+uc(3,:) = -10d0/c
 
 
 
@@ -594,13 +594,13 @@ END IF
 !                                                       Step Forward in Time                                                       !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! i = 1
-! WRITE(GAUGE_ID, 103) time * t / day,c* u1(i),c*u2(i), alpha_bar * theta1(i),alpha_bar * theta2(i),  &
-!     alpha_bar * theta_eb(i), q(i), &
-!     alpha_bar/t *day* DMAX1(0.00000000000001D0,hs(i)),  &
-!     alpha_bar/t *day*DMAX1(0.00000000000001D0,hc(i)), &
-!     alpha_bar/t *day* DMAX1(0.00000000000001D0,hd(i)),  &
-!     fcls(i),fdls(i),fsls(i)
+i = 1
+WRITE(GAUGE_ID, 103) time * t / day,c* u1(i),c*u2(i), alpha_bar * theta1(i),alpha_bar * theta2(i),  &
+    alpha_bar * theta_eb(i), q(i), &
+    alpha_bar/t *day* DMAX1(0.00000000000001D0,hs(i)),  &
+    alpha_bar/t *day*DMAX1(0.00000000000001D0,hc(i)), &
+    alpha_bar/t *day* DMAX1(0.00000000000001D0,hd(i)),  &
+    fcls(i),fdls(i),fsls(i)
 
 ! unpack data from u vector
 ! adjust temperature from FMK13 convection : m  theta_m -> theta_m

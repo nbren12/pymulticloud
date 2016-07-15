@@ -1,4 +1,5 @@
 module cmt_mod
+  use util, only : searchsorted, cumsum
   implicit none
   public :: updatecmt, init_cmt, stochastic_cmt
   private
@@ -78,7 +79,11 @@ contains
     integer, parameter :: nz = 5
 
     ! work
-    real(8) :: rate(0:1, 0:1,size(u,2)), umid(size(u,2)), ulo(size(u,2))
+    real(8) :: rate(2,2,size(u,2)), umid(size(u,2)), ulo(size(u,2))
+
+    ! gillespie algorithm variables
+    real(8) :: rsum(2), tau, t, runif
+    integer :: action
     real(8) :: rands(size(u,2))
     real(8), dimension(size(u,1)) :: k1, k2 ,k3, k4
     integer i, j
@@ -95,17 +100,25 @@ contains
 
        call random_number(rands)
 
-       !! One step of Gillespie
-       ! do i=1,size(u,2)
+       ! Gillespie Algorithm
+       do i=1,size(u,2)
+          t = 0d0
+          do
+          call cumsum(rate(scmt(i), :, i), rsum)
 
-       !    ! do switch if jump time is less then dt (this is a crude version of the Gillespie)
-       !    if (rate(i) > 1d-10) then
-       !       trand = -log(rands(i))/rate(i)
-       !       if (trand < dt) then
-       !          scmt(i) = 1 - scmt(i)
-       !       end if
-       !    end if
-       ! end do
+          ! next jump time
+          tau = - log(rands(i))/rsum(size(rsum))
+          t = t +tau
+
+          if (t < dt) then
+             call random_number(runif)
+             scmt(i) = searchsorted(rsum, runif * rsum(size(rsum)))
+          else
+             exit
+          end if
+
+          end do
+       end do
 
        !! Cheaper algorithm
        ! do i=1,size(u,2)
@@ -118,17 +131,17 @@ contains
        ! end do
 
        !! Equilibrium
-       do i=1,size(u,2)
-          if ( rands(i) * (rate(0,1,i) + rate(1,0,i) ) < rate(1,0,i)) then
-             scmt(i) = 0
-          else
-             scmt(i) = 1
-          end if
-       end do
+       ! do i=1,size(u,2)
+       !    if ( rands(i) * (rate(0,1,i) + rate(1,0,i) ) < rate(1,0,i)) then
+       !       scmt(i) = 0
+       !    else
+       !       scmt(i) = 1
+       !    end if
+       ! end do
 
 
     else
-       scmt = 0
+       scmt = 1
     end if
 
     do i=1,size(u,2)
@@ -180,9 +193,9 @@ contains
 
     fu = 0d0
 
-    if (scmt == 0) then
+    if (scmt == 1) then
        fu = -u * d0
-    else if (scmt == 1) then
+    else if (scmt == 2) then
        call dulowmid(matmul(tij,u), ulo, umid)
        if (umid * ulo < 0d0 ) then
           kappa = -(hd/hdref)**2 * umid * dcmt
