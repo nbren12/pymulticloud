@@ -24,7 +24,7 @@ def minmod(*args):
         return 0.0
 
 @jit
-def slopes(uc, ux, tht=2.0):
+def slopes(uc, ux, tht=1.5):
 
     neq, n = uc.shape
 
@@ -38,16 +38,27 @@ def slopes(uc, ux, tht=2.0):
 
     return ux
 
+def stagger_avg(uc):
+    ux = np.empty_like(uc)
+    slopes(uc, ux)
+    ustag = ((np.roll(uc, -1, axis=-1) + uc) / 2
+             + (ux - np.roll(ux, -1, axis=-1)) / 8)
+
+    return ustag
+
+def cent_avg(ustag):
+    """Inverse operation of stagger_avg"""
+    return np.roll(stagger_avg(ustag), 1, axis=-1)
+
+
 def single_step(fx, uc, dx, dt):
     ux = np.zeros_like(uc)
     uc = uc.copy()
     lmd = dt / dx
-    periodic_bc(uc)
-    slopes(uc, ux)
 
-    # average onto staggered grid
-    ustag = ((np.roll(uc, -1, axis=-1) + uc) / 2
-             + (ux - np.roll(ux, -1, axis=-1)) / 8)
+    periodic_bc(uc)
+    ustag = stagger_avg(uc)
+
 
     # predictor: mid-time-step pointewise values at cell-center
     # Eq. (1.1) in Jiand and Tadmor
@@ -61,12 +72,8 @@ def single_step(fx, uc, dx, dt):
     fc = fx(uc)
     ustag -= lmd * (np.roll(fc, -1, axis=-1) - fc)
 
-
     periodic_bc(ustag)
-    slopes(ustag, ux)
-
-    uc = ((np.roll(ustag, 1, axis=-1) + ustag) / 2
-             + (-ux + np.roll(ux, 1, axis=-1)) / 8)
+    uc = cent_avg(ustag)
 
     return uc
 
