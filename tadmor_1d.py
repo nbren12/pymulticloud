@@ -46,8 +46,8 @@ def single_step(fx, uc, dx, dt):
     slopes(uc, ux)
 
     # average onto staggered grid
-    ustag = ((np.roll(uc, 1, axis=-1) + uc) / 2
-             + (ux - np.roll(ux, 1, axis=-1)) / 8)
+    ustag = ((np.roll(uc, -1, axis=-1) + uc) / 2
+             + (ux - np.roll(ux, -1, axis=-1)) / 8)
 
     # predictor: mid-time-step pointewise values at cell-center
     # Eq. (1.1) in Jiand and Tadmor
@@ -59,11 +59,18 @@ def single_step(fx, uc, dx, dt):
     # Eq (1.2) in Jiang and Tadmor
     periodic_bc(uc)
     fc = fx(uc)
+    ustag -= lmd * (np.roll(fc, -1, axis=-1) - fc)
 
 
-    ustag -= lmd * (np.roll(fc, 1, axis=-1) - fc)
+    periodic_bc(ustag)
+    slopes(ustag, ux)
 
-    return ustag
+    uc = ((np.roll(ustag, 1, axis=-1) + ustag) / 2
+             + (-ux + np.roll(ux, 1, axis=-1)) / 8)
+
+    return uc
+
+
 
 
 def central_scheme(fx, uc, dx, dt):
@@ -86,20 +93,20 @@ def central_scheme(fx, uc, dx, dt):
     out: (neq, n)
        state vector on centered grid
     """
-    ustag =  np.roll(single_step(fx, uc, dx, dt/2), -1 , axis=0)
-    uc = single_step(fx, ustag, dx, dt/2)
+    # ustag = np.roll(single_step(fx, uc, dx, dt/2), -1, axis=-1)
+    # # ustag = single_step(fx, uc, dx, dt/2)
+    # uc = single_step(fx, ustag, dx, dt/2)
 
+    uc = single_step(fx, uc, dx, dt)
 
     return uc
-
-
 
 
 def tadmor_error(n):
     uc = np.zeros((1, n+ 4))
  
     L = 1.0
-    dx = L / (n+1)
+    dx = L/n
 
     x = np.arange(-2,n+2) * dx
 
@@ -111,17 +118,24 @@ def tadmor_error(n):
     def fx(u):
         return u
 
-
-
-    for it in range(int(1.0/dt)):
+    tend = 1.8
+    t = 0
+    while (t < tend - 1e-10):
+        dt = min(dt, tend-t)
         uc = central_scheme(fx, uc, dx, dt)
+        t+=dt
 
-    return np.sum(np.abs((uc[0,:]-u0)))/n
+    uexact = np.sin(2*pi*(x-t))**10
+
+    return np.sum(np.abs((uc[0,:]-uexact)))/n
 
 
 def tadmor_convergence():
+    """
+    Create error convergence plots for 1d advection problem
+    """
     import matplotlib.pyplot as plt
-    nlist = [500, 1000, 2000, 4000]
+    nlist = [50, 100, 200, 400, 800, 1600, 3200, 6400]
 
     err = [tadmor_error(n) for n in nlist]
     plt.loglog(nlist, err)
@@ -132,12 +146,14 @@ def tadmor_convergence():
 
 
 def test_tadmor_1d(n=2000):
+    """
+    scalar advection for tadmor scheme
+    """
     import matplotlib.pyplot as plt
-    n = 2000
     uc = np.zeros((1, n+ 4))
  
     L = 1.0
-    dx = L / (n+1)
+    dx = L /n
 
     x = np.arange(-2,n+2) * dx
 
@@ -152,18 +168,24 @@ def test_tadmor_1d(n=2000):
 
     plt.plot(x, uc[0,:], label='exact')
 
-    for it in range(int(1.0/dt)):
+    tend = 1.8
+    t = 0
+    while (t < tend - 1e-10):
+        dt = min(dt, tend-t)
         uc = central_scheme(fx, uc, dx, dt)
-
+        t+=dt
 
     plt.plot(x, uc[0,:], label='tadmor', c='k')
 
 def test_upwind_1d(n=2000):
+    """
+    scalar advection for upwinding scheme
+    """
     import matplotlib.pyplot as plt
     uc = np.zeros((1, n+ 4))
  
     L = 1.0
-    dx = L / (n+1)
+    dx = L/n
 
     x = np.arange(-2,n+2) * dx
 
@@ -171,22 +193,23 @@ def test_upwind_1d(n=2000):
 
     dt = dx/2
 
-
-    def fx(u):
-        return u
-
-
-
-    for it in range(int(1.0/dt)):
-        uc += -dt/dx * (uc - np.roll(uc, -1, axis=-1))
-
+    tend = 1.8
+    t = 0
+    while (t < tend - 1e-16):
+        dt = min(tend-t, dt)
+        uc += dt/dx * (np.roll(uc, 1, axis=-1) - uc)
+        t += dt
 
     plt.plot(x, uc[0,:], label='upwind')
 
-if __name__ == '__main__':
+def compare_upwind_tadmor():
     import matplotlib.pyplot as plt
-    n = 1000
+
+    n = 200
     test_tadmor_1d(n)
     test_upwind_1d(n)
     plt.legend()
     plt.show()
+
+if __name__ == '__main__':
+    pass
