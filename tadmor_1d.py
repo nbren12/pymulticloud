@@ -118,7 +118,7 @@ def tadmor_error(n):
     def fx(u):
         return u
 
-    tend = 1.8
+    tend = .87
     t = 0
     while (t < tend - 1e-10):
         dt = min(dt, tend-t)
@@ -130,22 +130,26 @@ def tadmor_error(n):
     return np.sum(np.abs((uc[0,:]-uexact)))/n
 
 
-def tadmor_convergence():
+def test_tadmor_convergence(plot=False):
     """
     Create error convergence plots for 1d advection problem
     """
-    import matplotlib.pyplot as plt
-    nlist = [50, 100, 200, 400, 800, 1600, 3200, 6400]
+    nlist = [50, 100, 200, 400, 800, 1600]
 
     err = [tadmor_error(n) for n in nlist]
-    plt.loglog(nlist, err)
     p = np.polyfit(np.log(nlist), np.log( err ), 1)
-    plt.title('Order of convergence p = %.2f'%p[0])
-    plt.show()
+
+    if - p[0] < 1.9:
+        raise ValueError('Order of convergence is less than 2')
+    if plot:
+        import matplotlib.pyplot as plt
+        plt.loglog(nlist, err)
+        plt.title('Order of convergence p = %.2f'%p[0])
+        plt.show()
 
 
 
-def test_tadmor_1d(n=2000):
+def plot_tadmor_1d(n=2000):
     """
     scalar advection for tadmor scheme
     """
@@ -177,7 +181,7 @@ def test_tadmor_1d(n=2000):
 
     plt.plot(x, uc[0,:], label='tadmor', c='k')
 
-def test_upwind_1d(n=2000):
+def plot_upwind_1d(n=2000):
     """
     scalar advection for upwinding scheme
     """
@@ -206,8 +210,8 @@ def compare_upwind_tadmor():
     import matplotlib.pyplot as plt
 
     n = 200
-    test_tadmor_1d(n)
-    test_upwind_1d(n)
+    plot_tadmor_1d(n)
+    plot_upwind_1d(n)
     plt.legend()
     plt.show()
 
