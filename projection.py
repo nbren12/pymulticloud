@@ -111,9 +111,8 @@ class VerticalGrid(object):
         """Dealias in spectral space"""
         fu = np.rollaxis(u, axis)
         assert fu.shape[0] == self.nz
-
         fu[self.num_modes:, ...] = 0.0
-        return np.rollaxis(fu, 0, start=axis)
+        return np.rollaxis(fu, 0, start=axis + 1)
 
     def dealias_spatial(self, u, kind, axis=0):
         """ Dealias in spatial space
@@ -126,13 +125,15 @@ class VerticalGrid(object):
             'c' or 's' for cosine or sine variable
 
         """
-        fu = np.rollaxis(u, axis, start=-2)
 
-        assert fu.shape[-2] == self.nz
-        self.z
+        fu = np.rollaxis(u, axis)
+        assert fu.shape[0] == self.nz
 
+        fu = self.spatial2spectral(fu, kind, axis=0)
         fu[self.num_modes:, ...] = 0.0
-        return np.rollaxis(fu, 0, start=axis)
+        fu = self.spectral2spatial(fu, kind, axis=0)
+
+        return np.rollaxis(fu, 0, start=axis + 1)
 
 
 

@@ -24,7 +24,7 @@ def minmod(*args):
         return 0.0
 
 @jit
-def slopes(uc, ux, tht=1.5):
+def slopes(uc, ux, tht=2.0):
 
     neq, n = uc.shape
 
@@ -121,7 +121,7 @@ def tadmor_error(n):
 
 def tadmor_convergence():
     import matplotlib.pyplot as plt
-    nlist = [100, 500, 1000, 2000, 4000, 8000]
+    nlist = [500, 1000, 2000, 4000]
 
     err = [tadmor_error(n) for n in nlist]
     plt.loglog(nlist, err)
@@ -131,7 +131,7 @@ def tadmor_convergence():
 
 
 
-def test_tadmor_1d(plot=False):
+def test_tadmor_1d(n=2000):
     import matplotlib.pyplot as plt
     n = 2000
     uc = np.zeros((1, n+ 4))
@@ -150,14 +150,43 @@ def test_tadmor_1d(plot=False):
         return u
 
 
-    plt.plot(x, uc[0,:])
+    plt.plot(x, uc[0,:], label='exact')
 
     for it in range(int(1.0/dt)):
         uc = central_scheme(fx, uc, dx, dt)
 
 
-    plt.plot(x, uc[0,:])
-    plt.show()
+    plt.plot(x, uc[0,:], label='tadmor', c='k')
+
+def test_upwind_1d(n=2000):
+    import matplotlib.pyplot as plt
+    uc = np.zeros((1, n+ 4))
+ 
+    L = 1.0
+    dx = L / (n+1)
+
+    x = np.arange(-2,n+2) * dx
+
+    uc[0,:] = np.exp(-((x-.5)/.10)**2)
+
+    dt = dx/2
+
+
+    def fx(u):
+        return u
+
+
+
+    for it in range(int(1.0/dt)):
+        uc += -dt/dx * (uc - np.roll(uc, -1, axis=-1))
+
+
+    plt.plot(x, uc[0,:], label='upwind')
 
 if __name__ == '__main__':
-    tadmor_convergence()
+    import matplotlib.pyplot as plt
+    n = 1000
+    test_tadmor_1d(n)
+    test_upwind_1d(n)
+    plt.legend()
+    plt.show()
