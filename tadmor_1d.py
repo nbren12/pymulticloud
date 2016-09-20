@@ -88,11 +88,12 @@ def single_step(fx, uc, dx, dt):
     periodic_bc(uc)
     fc = fx(uc)
     ustag -= lmd * (fc - np.roll(fc, 1, axis=-1))
+    return ustag
 
-    periodic_bc(ustag)
-    uc = cent_avg(ustag)
+    # periodic_bc(ustag)
+    # uc = cent_avg(ustag)
 
-    return uc
+    # return uc
 
 
 
@@ -117,11 +118,10 @@ def central_scheme(fx, uc, dx, dt):
     out: (neq, n)
        state vector on centered grid
     """
-    # ustag = np.roll(single_step(fx, uc, dx, dt/2), -1, axis=-1)
-    # # ustag = single_step(fx, uc, dx, dt/2)
-    # uc = single_step(fx, ustag, dx, dt/2)
+    ustag = np.roll(single_step(fx, uc, dx, dt/2), -1, axis=-1)
+    uc = single_step(fx, ustag, dx, dt/2)
 
-    uc = single_step(fx, uc, dx, dt)
+    # uc = single_step(fx, uc, dx, dt)
 
     return uc
 
