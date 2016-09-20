@@ -2,15 +2,25 @@
 Python implementation of the Tadmor centered scheme in 1d
 """
 import numpy as np
-from numpy import pi 
+from numpy import pi
 import numba
 from numba import jit
 
-@jit
-def periodic_bc(u, g=2):
-    u[:, -g:] = u[:, g:2 * g]
-    u[:, :g] = u[:, -2 * g:-g]
+def periodic_bc(u, g=2, axes=(1,)):
+    """periodic bc in arbitrary dimensions"""
 
+    for i in axes:
+        idx_in = [slice(None)]*u.ndim
+        idx_out = [slice(None)]*u.ndim
+
+        idx_in[i] = slice(g,2*g)
+        idx_out[i] = slice(-g, None)
+
+        u[idx_out] = u[idx_in]
+
+        idx_in[i] = slice(-2*g,-g)
+        idx_out[i] = slice(0, g)
+        u[idx_out] = u[idx_in]
 @jit
 def minmod(*args):
     mmin = min(args)
@@ -111,7 +121,7 @@ def central_scheme(fx, uc, dx, dt):
 
 def tadmor_error(n):
     uc = np.zeros((1, n+ 4))
- 
+
     L = 1.0
     dx = L/n
 
@@ -162,7 +172,7 @@ def plot_tadmor_1d(n=2000):
     """
     import matplotlib.pyplot as plt
     uc = np.zeros((1, n+ 4))
- 
+
     L = 1.0
     dx = L /n
 
@@ -194,7 +204,7 @@ def plot_upwind_1d(n=2000):
     """
     import matplotlib.pyplot as plt
     uc = np.zeros((1, n+ 4))
- 
+
     L = 1.0
     dx = L/n
 
