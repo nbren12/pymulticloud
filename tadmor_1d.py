@@ -3,7 +3,7 @@ Python implementation of the Tadmor centered scheme in 1d
 """
 import numpy as np
 from numpy import pi
-from scipy.ndimage import convolve1d
+from scipy.ndimage import correlate1d
 import numba
 from numba import jit
 
@@ -58,14 +58,14 @@ def slopes(uc, ux, tht=1.5):
 def stagger_avg(uc):
     ux = np.empty_like(uc)
     slopes(uc, ux)
-    ustag = (convolve1d(uc,[.5, .5], origin=0, axis=1) +
-             convolve1d(ux, [-.125, .125], origin=0, axis=1))
+    ustag = (correlate1d(uc,[.5, .5], origin=0, axis=1) +
+             correlate1d(ux, [.125, -.125], origin=0, axis=1))
 
     return ustag
 
 def cent_avg(ustag):
     """Inverse operation of stagger_avg"""
-    return np.roll(stagger_avg(ustag), 1, axis=-1)
+    return np.roll(stagger_avg(ustag), -1, axis=-1)
 
 
 def single_step(fx, uc, dx, dt):
@@ -87,7 +87,7 @@ def single_step(fx, uc, dx, dt):
     # Eq (1.2) in Jiang and Tadmor
     periodic_bc(uc)
     fc = fx(uc)
-    ustag -= lmd * (np.roll(fc, -1, axis=-1) - fc)
+    ustag -= lmd * (fc - np.roll(fc, 1, axis=-1))
 
     periodic_bc(ustag)
     uc = cent_avg(ustag)
