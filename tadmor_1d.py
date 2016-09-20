@@ -180,6 +180,7 @@ def plot_tadmor_1d(n=2000):
     import matplotlib.pyplot as plt
     uc = np.zeros((1, n+ 4))
 
+
     L = 1.0
     dx = L /n
 
@@ -239,5 +240,5 @@ def compare_upwind_tadmor():
     plt.legend()
     plt.show()
 
-if __name__ == '__main__':
-    pass
+
+
