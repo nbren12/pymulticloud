@@ -9,7 +9,7 @@ import numpy as np
 from scipy.ndimage import correlate1d
 from numba import jit
 
-from tadmor_common import periodic_bc, minmod
+from .tadmor_common import periodic_bc, minmod
 
 
 def _roll2d(u):

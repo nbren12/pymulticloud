@@ -1,5 +1,5 @@
 import numpy as np
-from tadmor_2d import central_scheme, _slopes, periodic_bc, _stagger_avg
+from .tadmor_2d import central_scheme, _slopes, periodic_bc, _stagger_avg
 
 def tadmor_error(n):
     uc = np.zeros((1, n+ 4, n + 4))
@@ -156,6 +156,6 @@ def plot_slopes():
 if __name__ == '__main__':
     pass
     # test_tadmor_convergence(plot=True)
-    # plot_advection2d()
+    plot_advection2d()
     # test_slopes()
     # test_stagger_avg()
