@@ -41,7 +41,7 @@ def minmod(*args):
         return 0.0
 
 @jit
-def slopes(uc, ux, tht=1.5):
+def _slopes(uc, ux, tht=1.5):
 
     neq, n = uc.shape
 
@@ -55,32 +55,32 @@ def slopes(uc, ux, tht=1.5):
 
     return ux
 
-def stagger_avg(uc):
+def _stagger_avg(uc):
     ux = np.empty_like(uc)
-    slopes(uc, ux)
+    _slopes(uc, ux)
     ustag = (correlate1d(uc,[.5, .5], origin=0, axis=1) +
              correlate1d(ux, [.125, -.125], origin=0, axis=1))
 
     return ustag
 
-def cent_avg(ustag):
-    """Inverse operation of stagger_avg"""
-    return np.roll(stagger_avg(ustag), -1, axis=-1)
+def _cent_avg(ustag):
+    """Inverse operation of _stagger_avg"""
+    return np.roll(_stagger_avg(ustag), -1, axis=-1)
 
 
-def single_step(fx, uc, dx, dt):
+def _single_step(fx, uc, dx, dt):
     ux = np.zeros_like(uc)
     uc = uc.copy()
     lmd = dt / dx
 
     periodic_bc(uc)
-    ustag = stagger_avg(uc)
+    ustag = _stagger_avg(uc)
 
 
     # predictor: mid-time-step pointewise values at cell-center
     # Eq. (1.1) in Jiand and Tadmor
     fc = fx(uc)
-    slopes(fc, ux)
+    _slopes(fc, ux)
     uc -= lmd / 2 * ux
 
     # corrector
@@ -91,7 +91,7 @@ def single_step(fx, uc, dx, dt):
     return ustag
 
     # periodic_bc(ustag)
-    # uc = cent_avg(ustag)
+    # uc = _cent_avg(ustag)
 
     # return uc
 
@@ -118,10 +118,10 @@ def central_scheme(fx, uc, dx, dt):
     out: (neq, n)
        state vector on centered grid
     """
-    ustag = np.roll(single_step(fx, uc, dx, dt/2), -1, axis=-1)
-    uc = single_step(fx, ustag, dx, dt/2)
+    ustag = np.roll(_single_step(fx, uc, dx, dt/2), -1, axis=-1)
+    uc = _single_step(fx, ustag, dx, dt/2)
 
-    # uc = single_step(fx, uc, dx, dt)
+    # uc = _single_step(fx, uc, dx, dt)
 
     return uc
 
@@ -239,6 +239,3 @@ def compare_upwind_tadmor():
     plot_upwind_1d(n)
     plt.legend()
     plt.show()
-
-
-

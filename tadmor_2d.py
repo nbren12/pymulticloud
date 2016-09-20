@@ -9,13 +9,13 @@ from numba import jit
 
 from tadmor_1d import (periodic_bc, minmod)
 
-def roll2d(u):
+def _roll2d(u):
     return np.roll(np.roll(u, -1, axis=1), -1,axis=2)
 
 
 
 @jit
-def slopesy(uc, uy, tht=1.5):
+def _slopesy(uc, uy, tht=1.5):
     neq, n1, n2 = uc.shape
 
     for j in range(neq):
@@ -28,18 +28,18 @@ def slopesy(uc, uy, tht=1.5):
 
 
 
-def slopes(uc, axis=-1, **kwargs):
+def _slopes(uc, axis=-1, **kwargs):
     uc = np.rollaxis(uc, axis, start=uc.ndim)
     uy = np.empty_like(uc)
-    slopesy(uc, uy, **kwargs)
+    _slopesy(uc, uy, **kwargs)
     return np.rollaxis(uy, -1, start=axis)
 
-def stagger_avg(uc):
+def _stagger_avg(uc):
     ux = np.empty_like(uc)
     uy = np.empty_like(uc)
 
-    ux = slopes(uc, axis=1)
-    uy = slopes(uc, axis=2)
+    ux = _slopes(uc, axis=1)
+    uy = _slopes(uc, axis=2)
 
     ox = correlate1d(uc, [.25, .25], axis=1)
     ox += correlate1d(ux, [.125, -.125], axis=1)
@@ -52,7 +52,7 @@ def stagger_avg(uc):
         correlate1d(oy, [.5, .5], axis=1)
 
 
-def corrector_step(fx, fy, lmd):
+def _corrector_step(fx, fy, lmd):
 
 
     ox = correlate1d(fx, [lmd, -lmd], axis=1)
@@ -62,29 +62,29 @@ def corrector_step(fx, fy, lmd):
     return correlate1d(ox, [.5, .5], axis=2) + \
         correlate1d(oy, [.5, .5], axis=1)
 
-def single_step(fx, fy, uc, dx, dt):
+def _single_step(fx, fy, uc, dx, dt):
     ux = np.zeros_like(uc)
     uy = np.zeros_like(uc)
     uc = uc.copy()
     lmd = dt / dx
 
     periodic_bc(uc, axes=(1, 2))
-    ustag = stagger_avg(uc)
+    ustag = _stagger_avg(uc)
 
     # predictor: mid-time-step pointewise values at cell-center
     # Eq. (1.1) in Jiand and Tadmor
-    ux = slopes(fx(uc), axis=1)
-    uy = slopes(fy(uc), axis=2)
+    ux = _slopes(fx(uc), axis=1)
+    uy = _slopes(fy(uc), axis=2)
     uc -= lmd / 2 * (ux + uy)
 
     # corrector
     # Eq (1.2) in Jiang and Tadmor
     periodic_bc(uc, axes=(1, 2))
-    ustag += corrector_step(fx(uc), fy(uc), lmd)
+    ustag += _corrector_step(fx(uc), fy(uc), lmd)
 
     return ustag
 
-def roll2d(u):
+def _roll2d(u):
     return np.roll(np.roll(u, -1, axis=1), -1,axis=2)
 
 def central_scheme(fx, fy, uc, dx, dt):
@@ -107,8 +107,8 @@ def central_scheme(fx, fy, uc, dx, dt):
     out: (neq, n)
        state vector on centered grid
     """
-    ustag = roll2d(single_step(fx, fy, uc, dx, dt/2))
-    uc = single_step(fx, fy, ustag, dx, dt/2)
+    ustag = _roll2d(_single_step(fx, fy, uc, dx, dt/2))
+    uc = _single_step(fx, fy, ustag, dx, dt/2)
 
     return uc
 

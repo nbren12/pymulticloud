@@ -1,5 +1,5 @@
 import numpy as np
-from tadmor_2d import central_scheme, slopes, periodic_bc, stagger_avg
+from tadmor_2d import central_scheme, _slopes, periodic_bc, _stagger_avg
 
 def tadmor_error(n):
     uc = np.zeros((1, n+ 4, n + 4))
@@ -117,7 +117,7 @@ def plot_stagger_avg():
 
     uc[0,:] = np.exp(-((x-.5)/.10)**2)  * np.exp(-((y-.5)/.10)**2)
 
-    zstag = stagger_avg(uc)
+    zstag = _stagger_avg(uc)
     periodic_bc(zstag, 2, axes=(1,2))
     plt.pcolormesh(zstag[0,...])
     plt.show()
@@ -141,12 +141,12 @@ def plot_slopes():
     uc[0,:] = np.exp(-((x-.5)/.10)**2)  * np.exp(-((y-.5)/.10)**2)
 
     plt.subplot(132)
-    uy = slopes(uc, axis=2)
+    uy = _slopes(uc, axis=2)
     plt.pcolormesh(uy[0,...])
 
 
     plt.subplot(131)
-    ux = slopes(uc, axis=1)
+    ux = _slopes(uc, axis=1)
     plt.pcolormesh(ux[0,...])
 
     plt.subplot(133)
