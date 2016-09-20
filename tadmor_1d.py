@@ -3,11 +3,18 @@ Python implementation of the Tadmor centered scheme in 1d
 """
 import numpy as np
 from numpy import pi
+from scipy.ndimage import convolve1d
 import numba
 from numba import jit
 
 def periodic_bc(u, g=2, axes=(1,)):
-    """periodic bc in arbitrary dimensions"""
+    """periodic bc in arbitrary dimensions
+
+    TODO
+    ----
+    - refactor this function into another module
+
+    """
 
     for i in axes:
         idx_in = [slice(None)]*u.ndim
@@ -51,8 +58,8 @@ def slopes(uc, ux, tht=1.5):
 def stagger_avg(uc):
     ux = np.empty_like(uc)
     slopes(uc, ux)
-    ustag = ((np.roll(uc, -1, axis=-1) + uc) / 2
-             + (ux - np.roll(ux, -1, axis=-1)) / 8)
+    ustag = (convolve1d(uc,[.5, .5], origin=0, axis=1) +
+             convolve1d(ux, [-.125, .125], origin=0, axis=1))
 
     return ustag
 
