@@ -17,7 +17,10 @@ class VerticalGrid(object):
     ----------
     c2z : (n,n)
         transition matrix from spectral to spatial
-
+    nz: int
+        number of vertical levels dealiased
+    vertical_grid: (nz,)
+        array of vertical grid locations
     """
 
     def __init__(self, num_modes):
