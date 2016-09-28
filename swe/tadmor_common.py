@@ -18,11 +18,21 @@ def periodic_bc(u, g=2, axes=(1, )):
         idx_out[i] = slice(0, g)
         u[idx_out] = u[idx_in]
 
+@jit(nopython=True)
+def fmax(a, b):
+    if a > b : return a
+    else: return b
 
-@jit
-def minmod(*args):
-    mmin = min(args)
-    mmax = max(args)
+
+@jit(nopython=True)
+def fmin(a, b):
+    if a < b : return a
+    else: return b
+
+@jit(nopython=True)
+def minmod(a, b, c):
+    mmax = fmax(fmax(a,b), c)
+    mmin = fmin(fmin(a,b), c)
 
     if mmin > 0.0:
         return mmin
