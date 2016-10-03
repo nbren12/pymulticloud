@@ -174,7 +174,7 @@ def report(name):
                      cbar_mode='single',
                      aspect=False)
 
-    for i in range(4):
+    for i in range(head['ntrunc']):
         cs = grid[i].contourf(x,
                               data['time'],
                               data['u'][..., i],
@@ -195,7 +195,7 @@ def report(name):
                      cbar_mode='single',
                      aspect=False)
 
-    for i in range(4):
+    for i in range(head['ntrunc']):
         cs = grid[i].contourf(x,
                               data['time'],
                               data['th'][..., i],

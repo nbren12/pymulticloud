@@ -3,10 +3,10 @@ make mcnde
 
 cat <<EOF > input.nml
 &DATA
-TEND    =   50.0
-TENERGY =  1.0,
+TEND    =   100.0
+TENERGY =  6.0,
 ASST    =  0.000000000000000     
-toggle_nonlinear = .false.
+toggle_nonlinear = .true.
 stochastic_cmt = .false.
 /
 EOF
