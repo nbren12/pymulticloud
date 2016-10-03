@@ -157,7 +157,6 @@ contains
     tau23= tau23*taumult
     call nondimensionalize_params
     call calculate_rce()
-    print *, 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
 
   end subroutine init_multicloud
 
@@ -166,9 +165,6 @@ contains
 
 
     t=l/c            !~ 8.33 hours, time scale
-
-    WRITE(35,*)'L=',l,' meters,  T=',t,'sec,  C=',c,  &
-         ' met./sec; theta_d=alpha_bar=',alpha_bar, 'Kelvin'
 
 
     lcp= (1000/700)**(287.4/1004)*(2.504E6)/1004/alpha_bar
@@ -195,8 +191,6 @@ contains
     zb=zb/l
     zt=zt/l
     zm=zm/l
-    WRITE (*,*) 'zb'
-    WRITE (*,*) zb
 
     tau_r=tau_r/t
     tau_s=tau_s/t
@@ -242,9 +236,9 @@ contains
     x = (/capebar, fceq, fdeq, fseq/)
     call fcn(4, x, fvec, 0)
 
-    print *, 'Should be close to zero'
-    print *,fvec
-    print *
+    ! print *, 'Should be close to zero'
+    ! print *,fvec
+    ! print *
   end subroutine check_srce
 
   subroutine calculate_srce()
@@ -295,7 +289,7 @@ contains
 
 
   SUBROUTINE range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,  &
-       n,dt, thteb_st,timel,hds,s1)
+       n,dt, thteb_st,timel,hds)
     use param_mod
     IMPLICIT NONE
 
@@ -314,7 +308,6 @@ contains
     REAL*8, INTENT(IN)                       :: thteb_st(n)
     REAL*8, INTENT(IN)                       :: timel
     REAL*8, INTENT(IN OUT)                   :: hds(n)
-    REAL*8, INTENT(IN)                       :: s1
     INTEGER :: i
 
     REAL*8 ftht1,ftht2,fthteb,fq,fhs,fhc,two_sqrt2,xgtemp
@@ -381,11 +374,6 @@ contains
        theta2 (i)= theta2(i) + dt* ftht2
 
 
-       xg=SIN(2.d0*pi*((n/24.d0)*timel*t/(3600.d0) +i)/n- pi/2.d0)
-       xg=(xg-1.d0/pi)*(pi/(pi-1.d0))
-       xgtemp=(1.d0/(1.d0-pi))
-       xg=DMAX1(xg,xgtemp)*s1
-
 
 
 
@@ -438,13 +426,7 @@ contains
        theta2 (i)= u_temp(4) + dt* ftht2
        xg=SIN(2.d0*pi*((n/24.d0)*(timel+dt)*t/(3600.d0) +i)/n- pi/2.d0)
 
-       xg=(xg-1.d0/pi)*(pi/(pi-1.d0))
-       xgtemp=1.d0*(1.d0/(1.d0-pi))
-       xg=DMAX1(xg,xgtemp)*s1
-
-
-
-       fthteb=(fthteb + (theta_ebs_m_theta_eb+sdc*xg+thteb_st(i)  &
+       fthteb=(fthteb + (theta_ebs_m_theta_eb+thteb_st(i)  &
             - theta_eb(i))/tau_e  - d/zb)/2
 
        theta_eb(i)=  u_temp(5) + dt* fthteb

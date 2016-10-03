@@ -29,7 +29,7 @@ REAL*8 thteb_st(n), asst,lsst
 
 
 
-REAL*8 q_tld,alpha_tld,lmd_tld,tempg,dctime,dcint,s1
+REAL*8 q_tld,alpha_tld,lmd_tld,tempg
 
 PARAMETER(alpha_tld=0.1D0,lmd_tld=0.8D0,q_tld=0.9D0)
 
@@ -345,9 +345,6 @@ DO i=1,n
   q(i) = uc(2*ntrunc+1,i)
 END DO
 
-IF (time > dctime) THEN
-  s1=DMIN1(1.d0,(time-dctime)/dcint)
-END IF
 
 
 
@@ -358,7 +355,7 @@ CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
 dt=tempg
 
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
-    ,2.d0*dt,thteb_st,time,hds,s1)
+    ,2.d0*dt,thteb_st,time,hds)
 dt=tempg
 
 
