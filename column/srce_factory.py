@@ -321,7 +321,7 @@ class NMLFactory(object):
 
 
     def summary(c):
-        print c.fceq, c.fdeq, c.fseq, c.capebar
+        print(c.fceq, c.fdeq, c.fseq, c.capebar)
         return np.array([c.fceq, c.fdeq, c.fseq, c.capebar])
 
     def print_namelist(c):
@@ -351,7 +351,7 @@ def test_sympy_matches_class():
     f = lambdify( rce_unknowns, FTot)
     ff = lambda x : f(*x)
     sympy_x = fsolve(ff, [.1]*9, factor=.1)
-    print sympy_x
+    print(sympy_x)
 
     n  = NMLFactory()
     n._calc_rce_fracs()

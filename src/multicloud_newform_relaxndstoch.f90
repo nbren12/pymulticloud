@@ -3,22 +3,20 @@
 ! Date: 2014-04-30  Time: 02:18:49
 
 PROGRAM three_cloud_types_new_formulation
-use stochastic
 use util
-use forcings
 use nonlinear_module
 use state_mod, only: n, ntrunc, fcls, fdls, fsls, scmt
 use cmt_mod
+use param_mod
+use multicloud_mod, only: init_multicloud, updatehcds, range_kuttas, get_eqcloudfrac, T, L, alpha_bar, c, ud, theta_ebs_m_theta_eb
+
 IMPLICIT NONE
 INTEGER :: i, j, niter, iter,k,nout, iout,inrg
 integer :: GAUGE_ID = 37, SNAPSHOT_ID = 38,ufid=39, tfid=40, PARAMETER_OUTPUT=35
 logical :: BINARY_OUTPUT
-REAL*8 taumult ,nstochloc
-PARAMETER(nstochloc=30)
-PARAMETER(taumult=1.d0)
 
 ! Toggles
-logical, parameter :: CMT_ON = .true.
+logical, parameter :: CMT_ON = .FALSE.
 
 !     PROGNOSTIC VARIABLES
 REAL*8 u1(n),u2(n),theta1(n),theta2(n),  &
@@ -39,18 +37,12 @@ REAL*8 dt,dx,p, umax,time,dt_max,twave_count2
 REAL*8 theta_d,tend,tout,tenergy
 
 
+real(8) fceq, fdeq, fseq
 
 
 
 ! Parameters for precipitation relaxation scheme
 
-REAL*8 fs,fd,fc,deltas
-!      PARAMETER(a1=.9,a2=.1,a0=1.7,alpha2=1.d0)
-
-
-
-REAL*8 pi,n2,gamma,gammam, cp,omega,r, theta0,g, beta, lcp,EQ
-REAL*8 zm, zp, u0, cd
 REAL*8 theta_embar
 
 REAL*8 theta_ebs, theta_ebbar
@@ -69,102 +61,6 @@ REAL*8 twave_outa,twave_count2a,tenergya,twa
 namelist /data/ tend, tenergy, asst, toggle_nonlinear, stochastic_cmt
 
 
-
-nstochgl=nstochloc
-pi=4*DATAN(1.d0)
-
-!     Parametrization parameters: a1=1; a2=0 ====> CAPE parametrization
-!                                 a1=0, a2=1=====> moisture parametrization
-
-
-a1=0.5D0
-a2=1.d0 -a1
-a0=2.d0
-
-a1p=1.d0  !Coefficient  of theta_eb in low CAPE, should be 1
-a2p=0.d0  ! Coefficient of q in low CAPE should be zero
-a0p=1.5D0
-alpha2=.1D0 ! gamma_2 in the papers (JASI,JASII,TAO,TCFD)
-alpha3=.1D0 ! alpha_2 in the papers
-alpha4=2.d0
-
-!     lower threshold for parameter lambda: mesuring dryness and moisteness of middle troposphere
-
-
-lambdas=0.d0
-
-!     Benchmark of standard parameters
-
-
-
-cp=1000.d0     !J/kg/K
-gamma=1.7D0    ! ratio of moist and dry lapse rates
-gammam = 6.0 / km ! moist lapse rate (K /m)
-theta0 = 300  ! reference pot temp (K)
-omega= 2*pi/(24*hour)! the angular velocity of the earth and
-r=6378*km           ! radius of the earth
-theta0=300.d0 !K background  reference temperature
-g=9.8D0 !m/s gravitational acceleration
-beta=2*omega/r      !1/s/m
-EQ=40000*km!  Earth's peremeter at the Equator
-n2=.0001D0         !Vaissala buoyancy frequency squared
-
-
-zt=16.00*km !topospheric height
-zm = 5000.d0 !middle trop height
-zb=500.d0 !meters boundary layer depth
-zp = 8.d0 * km ! average height of penetrative clouds
-
-! Scales
-c         = dsqrt(n2) *zt / pi
-alpha_bar = zm * n2 * theta0 / g ! temperature scale
-L         = dsqrt(c / beta)
-T         = L / c
-
-
-cd=.001 ! momentum drag coefficient
-u0=2.d0 !m/s strength of turbulent fluctuations
-tau_d = 75*day! sec           Rayleigh-wind Relaxation Scale
-tau_r= 50*day !sec           Newtonian Cooling Relaxation Time Scale
-tau_s=3.d0*hour  !sec           Stratiform adjustment time Scale (not to confuse with stratiform time scale which is given by tau_conv
-tau_conv=  2*hour !sec           Convective time scale
-tau_c=3*hour   !sec   Congestus adjustment time scale (not to confuse with congestus time scale which is given by tau_conv/alpha_c )
-
-
-
-! RCE fixed by QR01,theta_ebs_m_theta_eb,theta_eb_m_theta_em,thetap,thetam
-
-
-
-
-qr01 = 1.d0/day!/2/dsqrt(2.d0)       ! prescribed radiative cooling associated with first baroclinic
-
-alpha_s=0.25D0            ! ratio of deep convective and stratiform heating rates
-
-alpha_c=0.1D0  !ratio of deep convective and congestus time scales
-
-mu= 0.25D0   ! contribution of lower  tropospheric cooling (H_s - H_c) to downdrafts
-fs = 0.4D0 ! stratiform fraction  of total  surface rain fall.
-fd = 0.6D0 !   deep convective fraction of total  surface rain fall.
-fc = 0.d0 ! congestus fraction of total   surface precipitation
-
-
-xic= fc/fd/alpha_c
-xis = fs/fd/alpha_s
-xic=0.0D0
-xis=0.4D0
-
-
-PRINT*,'xic=',xic
-PRINT*,'xis=',xis
-
-
-deltas=(16-3*pi*xis)/(16+3*pi*xis)
-
-deltac=(16-3*pi*xic)/(16+3*pi*xic)
-
-PRINT*,'deltas=',deltas,'deltac=',deltac
-
 111  CONTINUE
 
 !       print*, 'Enter 0 to shut mu off 1 otherwise:'
@@ -173,160 +69,11 @@ PRINT*,'deltas=',deltas,'deltac=',deltac
 
 
 
-theta_ebs_m_theta_eb = 10.d0 !K discrepancy between boundary layer theta_e and its saturation value
 
-tau_e= (theta_ebs_m_theta_eb/qr01)*(zb/zt)*pi/2.d0/DSQRT(2.d0)! Evaporative time scale
-
-theta_eb_m_theta_em=11.d0!K discrepancy between boundary layer and middle tropospheric theta_e''s
-theta_eb_elbar=0.d0!K discrepancy between boundary layer and lower middle tropospheric theta_e''s
-
-deltac1=0.d0
-
-
-
-
-thetap=20.d0!
-thetam=10.d0 !K thresholds moistening and drying of middle troposphere
-
-a=(1.d0-lambdas)/(thetap-thetam)
-b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
-
-
-! Stochastic Params
-
-CAPE0 = 400 ! J / Kg
-MOIST0 = 30 ! K
-rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
-
-OPEN(35,FILE="OUTPUT",STATUS='new')
-WRITE(35,*)'Evaporative time tau_e=', tau_e/3600/24,' days'
-
-PRINT*,'Evaporative time tau_e=', tau_e/3600/24,' days'
-WRITE(35,*) 'Type of RCE:'
-WRITE(35,*) '-------------'
-IF(theta_eb_m_theta_em <= thetam) THEN
-  lambdabar=lambdas
-  
-  WRITE(35,*)'Pure deep convective RCE'
-ELSE IF(theta_eb_m_theta_em < thetap) THEN
-  WRITE(35,*)'Mixed Deep convective-Congestus RCE'
-  lambdabar=a*theta_eb_m_theta_em+b
-  
-ELSE
-  WRITE(35,*)'Pure Congestus RCE--dry troposphere'
-  lambdabar=1.d0
-END IF
-
-WRITE(35,*)'********lambda_tilde=', lmd_tld
-
-
-WRITE (*,*) 'QR01'
-WRITE (*,*) qr01
-
-WRITE(35,*)'RCE values'
-WRITE(35,*)'QR01=', qr01*day, ' K/day Qc=', qcbar*day,' K/day,'  &
-    ,'   D=',dbar, 'K m/s', 'QR02=', qr02*day,' K/day'
-
-WRITE(35,*)' theta_eb - theta_em', theta_eb_m_theta_em, 'K'
-PRINT*, 'theta_ebs_m_theta_eb', theta_ebs_m_theta_eb, ' K'
-print *, 'N Stoch GL' , nstochgl
-
-
-WRITE(35,*)'-----------------Type of Parametrization'
-
-WRITE(35,*)'a1=',a1,' a2=', a2,' a0=',a0
-PRINT*, 'a1=',a1,' a2=', a2,' a0=',a0
-WRITE(35,*)'Lambda_bar=', lambdabar
-PRINT*,'Lambda_bar=', lambdabar
-WRITE(35,*)'mu=', mu
-PRINT*,'mu=', mu
-WRITE(35,*)'alpha_c=',alpha_c,' tau_c=', tau_c/3600,  &
-    ' hours; tau_s=', tau_s/3600, ' hours;tau_conv=', tau_conv/3600,  &
-    ' hours;'
-
-PRINT*,'alpha_c=',alpha_c,' tau_c=', tau_c/3600,  &
-    ' hours; tau_s=', tau_s/3600, ' hours;tau_conv=', tau_conv/3600,  &
-    ' hours;'
-
-
-
-
-!  Reference scales
-
- ! m isture: ratio of latent heat of vaporization and heat capacity
-!times (p/p_0)^{-.28), p=700 hPa, P_0=1000 normalized by alpha_bar unit of temperature.
-
-
-
-!    NON DIMENTIONALIZATION OF RCE VALUES AND PARAMETERS USED BEYOND THIS
-
-!    stochastic RCE parameters
-! TODO : refactor m0, rstoch, alpha_Bar, l, c into calculate_rce
-
-! FMK13 Taus
-tau01 = 1.0d0
-tau02 = 3.0d0
-tau10 = 1.0d0
-tau12 = 1.0d0
-tau20 = 3.0d0
-tau30 = 5.0d0
-tau23 = 3.0d0
-
-! C_omega times from Peters et al. 2013
-!tau01 = 1.0d0
-!tau02 = 2.2d0
-!tau10 = 1.2d0
-!tau12 = 1.2d0
-!tau20 = 2.4d0
-!tau30 = 4.0d0
-!tau23 = 0.16d0
-
-if (.false.) then
-
-        OPEN(69,FILE="SRCE.txt",STATUS='old')
-        WRITE (*,*) 'rcefile'
-        READ(69,*) qbar
-        READ(69,*) dbar
-        READ(69,*) pbar
-        READ(69,*) qr02
-        READ(69,*)  tau_e
-        READ(69,*)  m0
-        READ(69,*) cape0!done
-        READ(69,*) capebar
-        READ(69,*) fceq!done
-        READ(69,*) fdeq!done
-        READ(69,*) fseq!done
-        READ(69,*) rstoch
-        READ(69,*) tau01
-        READ(69,*) tau02
-        READ(69,*) tau10
-        READ(69,*) tau12
-        READ(69,*) tau20
-        READ(69,*) tau30
-        READ(69,*) tau23
-
-        READ(69,*) alpha_bar
-        READ(69,*) l
-        READ(69,*) c
-        READ(69,*) moist0!done
-endif
-
-
-tau01=tau01*taumult
-tau02=tau02*taumult
-tau10=tau10*taumult
-tau12=tau12*taumult
-tau20=tau20*taumult
-tau30=tau30*taumult
-tau23= tau23*taumult
-
-
-call nondimensionalize_params
+call init_param()
 call init_cmt(n, ntrunc)
-call calculate_rce()
-! call check_srce()
-print *, 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
-
+call init_multicloud
+call get_eqcloudfrac(fceq, fdeq, fseq)
 
 DO i=1,n
   fcls(i)=fceq;
@@ -335,28 +82,6 @@ DO i=1,n
 END DO
 
 
-WRITE(*,*) 'tau10'
-WRITE(*,*) tau10
-PRINT*,'m0',m0, 'mu/Qc',mu
-WRITE(35,*)'m0',m0*c,'    m/s'
-WRITE(PARAMETER_OUTPUT, *) 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
-!        stop
-
-!     COMMON/CONST_PAR/A,B,A0,A1,A2,ALPHA2,LAMBDAS,ALPHA_S,ALPHA_C,MU,
-!     x     UD,thetap,thetam,ZB,ZT
-!      COMMON /RCE_VALUES/QR01,QR02,LAMBDABAR,QcBAR,DBAR
-!     X     THETA_EB_M_THETA_EM,M0
-!      COMMON /CHAR_TIMES/TAU_CONV,TAU_E, TAU_S,TAU_C,tau_r
-
-
-
-!    GRID and MAXIMUM TIME STEP
-
-
-!       print*,'ENTER WAVENUMBER k'
-!       read*, k
-!        P=EQ/L
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                                                  Setup Time Stepping and Output                                                  !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -364,7 +89,7 @@ WRITE(PARAMETER_OUTPUT, *) 'Equilibrium Cloud Fractions:  ', fceq, fdeq, fseq
 BINARY_OUTPUT = .true.
 
 dt_max =2.d0*minute/t
-dt_max =1.d0*minute/t
+dt_max =5.d0*minute/t
 
 
 
@@ -423,11 +148,6 @@ WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
 
 asst=0.5d0;
 lsst=EQ/l/8;
-!      Strength of the diurnal cycle in K
-dctime=0.d0*day/t;
-dcint=0.01D0*day/t;
-sdc=0.0D0/theta_d;
-dtype=2;
 
 
 
@@ -463,11 +183,6 @@ END DO
 
 
 CLOSE(36)
-!       STOP
-WRITE(35,*)'DBAR "non_dim"', m0*(1.d0 - mu*qr02)*lambdabar  &
-    *theta_eb_m_theta_em, 'DBAR=',dbar
-WRITE(35,*)'UD:', ud
-WRITE(35,*)'A=', a, 'B=', b, 'mu =',mu
 
 
 
@@ -829,139 +544,6 @@ close(SNAPSHOT_ID)
 
 CONTAINS
 
-
-subroutine nondimensionalize_params()
-
-
-
-    t=l/c            !~ 8.33 hours, time scale
-    theta_d=alpha_bar !~15 degree K; temperature scale
-
-    WRITE(35,*)'L=',l,' meters,  T=',t,'sec,  C=',c,  &
-        ' met./sec; theta_d=alpha_bar=',alpha_bar, 'Kelvin'
-
-
-    lcp= (1000/700)**(287.4/1004)*(2.504E6)/1004/alpha_bar
-
-    qcbar=qbar
-
-    a =a *alpha_bar
-
-    theta_eb_m_theta_em=theta_eb_m_theta_em/alpha_bar
-    theta_ebs_m_theta_eb =  theta_ebs_m_theta_eb/alpha_bar
-    theta_eb_elbar =  theta_eb_elbar/alpha_bar
-
-
-    thetap=thetap/alpha_bar
-    thetam=thetam/alpha_bar
-
-    qr01 = qr01*t/alpha_bar
-
-    !       QR02 = QR02*T/ALPHA_BAR
-
-
-    ud = cd*u0*t/zb + t/tau_d
-
-    zb=zb/l
-    zt=zt/l
-    zm=zm/l
-    WRITE (*,*) 'zb'
-    WRITE (*,*) zb
-
-    tau_r=tau_r/t
-    tau_s=tau_s/t
-    tau_c=tau_c/t
-    tau_conv = tau_conv/t
-
-
-    ! Stochastic Params
-
-    CAPE0 = CAPE0 / c / c
-    MOIST0 = MOIST0 / alpha_bar
-
-end subroutine nondimensionalize_params
-
-subroutine calculate_rce()
-    ! This code doesn't handle congestus detrainment
-    real *8 :: hsbar, hcbar, hdbar, tspi
-    call calculate_srce()
-
-    hsbar = fseq * alpha_s * dsqrt(capebar) /zm
-    hcbar = fceq * alpha_c * dsqrt(capebar) /zm
-    hdbar = fdeq * dsqrt(capebar) / zm
-
-
-    qr02 = Hcbar - Hsbar
-
-    pbar = Hdbar + Hsbar * xis + Hcbar * xic
-
-    ! This dbar is different from ColumnStandard.m, but correct I think
-    dbar = 2.d0 * dsqrt(2.0d0)/pi * pbar * zt
-
-    m0   = (1.0d0 + mu * ( Hsbar - Hcbar) / qr01 )* theta_eb_m_theta_em
-    m0   = dbar /m0
-
-    tau_e = theta_ebs_m_theta_eb * zb / dbar
-
-end subroutine calculate_rce
-
-
-subroutine check_srce()
-    real *8 x(4), fvec(4)
-
-    x = (/capebar, fceq, fdeq, fseq/)
-    call fcn(4, x, fvec, 0)
-
-    print *, 'Should be close to zero'
-    print *,fvec
-    print *
-end subroutine
-
-subroutine calculate_srce()
-
-    integer info, i
-
-    real *8 fvec(4), x(4)
-    real *8 wa(200)
-    real *8 :: tol = 1d-16
-
-    x = (/(.1d0, i = 1,4)/)
-    call hybrd1(fcn,4,x,fvec,tol,info,wa,200)
-
-    capebar = x(1)
-    fceq    = x(2)
-    fdeq    = x(3)
-    fseq    = x(4)
-end subroutine calculate_srce
-
-subroutine fcn(n,x,fvec,iflag)
-    integer n,iflag
-    double precision x(n),fvec(n)
-    real *8 cd,cl,d,r01,r02,r10,r20,r23,r12,r30
-    real *8 sig_clear
-
-    capebar = x(1)
-    qbar =  dsqrt( capebar )/ zm
-
-    fceq    = x(2)
-    fdeq    = x(3)
-    fseq    = x(4)
-
-    sig_clear = 1.0d0 - fceq - fdeq - fseq
-
-    cd = capebar /cape0
-    cl = capebar / cape0
-    d  = theta_eb_m_theta_em / moist0
-
-    call equildistr2(cd,cl,d,r01,r02,r10,r20,r23,r12,r30)
-
-    fvec(1) = sig_clear * r01 - fceq * (r10 + r12)
-    fvec(2) = sig_clear * r02 + fceq * r12 - fdeq * (r20 + r23)
-    fvec(3) = fdeq * r23 - fseq * r30
-    fvec(4) = QR01 - qbar * (fdeq + fseq * xis * alpha_s  &
-                + fceq * xic * alpha_c)
-
-end subroutine
 
 END PROGRAM three_cloud_types_new_formulation
 

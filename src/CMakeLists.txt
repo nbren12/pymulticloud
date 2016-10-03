@@ -10,11 +10,11 @@ endif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
 
 SET ( SOURCES
+  multicloud_mod.f90
   param_mod.f90
   state_mod.f90
   cmt_mod.f90
-  forcings.f90
-  stochastic.f90 central_scheme_correct.f90
+  central_scheme_correct.f90
   util.f90
   duni.f
   )

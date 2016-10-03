@@ -13,16 +13,16 @@ module cmt_mod
   real(8) :: pi, sqrt2
   real(8) :: taur, betaq, betau, qcref, hdref, duref, dumin, d0,dcmt,tauf
 
-
-
 contains
 
   subroutine init_cmt(n, ntrunc)
-    use param, only: t, hour, day, c, alpha_bar
+    use param_mod
     integer, intent(in) :: n, ntrunc
 
     integer i, j, nz
     real(8) mult
+
+    real(8) c, alpha_bar, L, T
 
     ! allocate arrays
     allocate(tij(0:16, ntrunc))
@@ -43,6 +43,19 @@ contains
 
 
     !! initialize parameters
+
+
+    zt=16.00*km !topospheric height
+    zm = 5000.d0 !middle trop height
+    zb=500.d0 !meters boundary layer depth
+    zp = 8.d0 * km ! average height of penetrative clouds
+
+    ! Scales
+    c         = dsqrt(n2) *zt / pi
+    alpha_bar = zm * n2 * theta0 / g ! temperature scale
+    L         = dsqrt(c / beta)
+    T         = L / c
+
 
     ! timescale of transitions
     taur = 8d0 * hour / t

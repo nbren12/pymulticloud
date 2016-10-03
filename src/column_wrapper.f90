@@ -3,10 +3,10 @@
 ! Date: 2014-04-30  Time: 02:18:49
 
 PROGRAM three_cloud_types_new_formulation
-use stochastic
+use multicloud_mod
 use util
-use forcings
 use nonlinear_module
+use param_mod
 use cmt_mod
 IMPLICIT NONE
 integer, parameter :: n = 1, ntrunc=4, dp=kind(0d0)
