@@ -3,6 +3,7 @@ import numpy as np
 from numpy import sqrt
 from scipy.ndimage import correlate1d
 from .tadmor_1d import periodic_bc, central_scheme
+from .timestepping import steps
 
 logging.basicConfig(level=logging.INFO)
 
@@ -11,17 +12,18 @@ logging.basicConfig(level=logging.INFO)
 L = 3
 
 
-def f(q):
+def f(q, fq=None, nonlin=0.0):
     """Conservative flux according to stechmann and majda"""
     u = q[:2*L:2,...]
     T = q[1:2*L:2,...]
 
-    fq = np.empty_like(q)
+    if fq is None:
+        fq = np.empty_like(q)
 
     fq[0,...] = 0.0
     fq[1,...] = 0.0
-    fq[2,...] = - T[1] + 3/sqrt(2) * u[1] * u[2]
-    fq[3,...] = - u[1] + sqrt(2) * u[1] * T[2] - u[2] * T[1] / sqrt(2)
+    fq[2,...] = - T[1] + nonlin * 3/sqrt(2) * u[1] * u[2]
+    fq[3,...] = - u[1] + nonlin * (sqrt(2) * u[1] * T[2] - u[2] * T[1] / sqrt(2))
     fq[4,...] = -T[2]
     fq[5,...] = -u[2] / 4
 
@@ -50,25 +52,12 @@ def f_nc(q, dx):
     return fq
 
 
-def onestep(q, dx, dt):
+def onestep(q, t, dt, dx):
     q = central_scheme(f, q, dx, dt)
     q += dt * f_nc(q, dx)
 
     return q
 
-def steps(q, dx, dt, t_end):
-    t = 0
-
-    yield t, q
-
-    while (t < t_end - 1e-10):
-        dt = min(dt, t_end-t)
-        q = onestep(q, dx, dt)
-        t+=dt
-
-        logging.info("t = {t:.2f}".format(t=t))
-
-        yield t, q
 
 labs = ['u0','t0', 'u1', 't1', 'u2', 't2']
 
@@ -87,7 +76,7 @@ def main():
 
     q[3,:] = np.sin(2*np.pi*x/domain_size) * (x < domain_size/2)
 
-    t, q = zip(*list(steps(q, dx, dt, t_end)))
+    t, q = zip(*list(steps(onestep, q, dx, dt, t_end)))
 
     def plot_q(t, q):
         fig, axs= plt.subplots(2,2)
