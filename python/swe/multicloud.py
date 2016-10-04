@@ -150,7 +150,6 @@ def main():
     dt_out = 1.0
     t_out = t_start + dt_out
     i_out = 1
-    i_file = 0
 
     arr = record_array_soln(soln, 0.0)
 
@@ -162,7 +161,6 @@ def main():
 
     if not os.path.isdir(datadir):
         os.mkdir(datadir)
-    f = open(os.path.join(datadir, "datafiles.txt"), "w+")
 
     for t, soln in steps(onestep, soln, dt, (t_start, t_end), dx):
 
@@ -173,18 +171,23 @@ def main():
             i_out += 1
 
             if i_out >= nbuf:
-                cur_file_name = str(uuid.uuid1()) + ".npz"
-                logging.info("Saving data to file `{1}` at t={0}".format(
-                    t, cur_file_name))
-                np.savez(os.path.join(datadir, cur_file_name), output)
-                f.write(cur_file_name)
-                f.write("\n")
-                i_file += 1
+                dump_output_file(t, output, datadir)
                 i_out = 0
 
-    f.close()
+    dump_output_file(t, output, datadir)
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
-    np.savez("soln%05d.npz" % i_file, output[:i_out])
+
+
+def dump_output_file(t, output, datadir):
+
+    cur_file_name = str(uuid.uuid1()) + ".npz"
+
+    logging.info("Saving data to file `{1}` at t={0}".format(t, cur_file_name))
+    np.savez(os.path.join(datadir, cur_file_name), output)
+
+    with open(os.path.join(datadir, "datafiles.txt"), "a") as f:
+        f.write(cur_file_name)
+        f.write("\n")
 
 
 def test_record_array_soln():
