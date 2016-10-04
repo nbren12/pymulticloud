@@ -1,4 +1,7 @@
-"""Implementation of multicloud model"""
+"""Implementation of multicloud model in python
+
+This code uses the forcings and gillespie algorithm from the fortran code
+"""
 import itertools
 import sys
 import os
@@ -11,6 +14,7 @@ from .two_mode_swe import f as f2m
 from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
+# TODO add the multicloud code to this project
 sys.path.insert(0, "/Users/noah/workspace/multicloudstochfmk13/")
 import build.multicloud as mc
 
