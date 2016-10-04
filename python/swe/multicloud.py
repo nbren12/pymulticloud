@@ -174,7 +174,7 @@ def main():
                 dump_output_file(t, output, datadir)
                 i_out = 0
 
-    dump_output_file(t, output, datadir)
+    dump_output_file(t, output[:i_out], datadir)
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
 
 
