@@ -1,6 +1,12 @@
 """Wrapper module for multicloud model fortran code.
 
 This module uses cffi to wrap a fortran function with iso_c_bindings
+
+Members
+-------
+equilibrium_fraction: compute equilibrium cloud fractions
+multicloud_rhs: single time step of multicloud model
+
 """
 import os
 from cffi import FFI
@@ -34,7 +40,7 @@ def _open_library():
         'libmulticloud' + _uname_library_extensions[os.uname().sysname])
 
     if os.uname().sysname == 'Linux':
-        libs = ldd(library_path)
+        libs = ldd_linux(library_path)
         ffi.dlopen(libs['libgfortran.so.3'])
     _mc_library = ffi.dlopen(library_path)
     return _mc_library
