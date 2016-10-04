@@ -25,6 +25,10 @@ add_executable ( mcnde ${SOURCES} multicloud_newform_relaxndstoch.f90)
 add_executable ( column ${SOURCES} column_wrapper.f90)
 add_library(multicloud SHARED multicloud_wrapper.f90 multicloud_mod.f90 param_mod.f90 util.f90 duni.f)
 
+foreach(pyfile multicloud.py __init__.py)
+  configure_file(${pyfile} ${CMAKE_CURRENT_BINARY_DIR}/${pyfile})
+endforeach(pyfile)
+
 target_link_libraries (mcnde minpack)
 target_link_libraries (multicloud minpackdl)
 target_link_libraries (column minpack)

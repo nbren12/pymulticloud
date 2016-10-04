@@ -15,8 +15,7 @@ from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
 # TODO add the multicloud code to this project
-sys.path.insert(0, "/Users/noah/workspace/multicloudstochfmk13/")
-import build.multicloud as mc
+from fortran import multicloud as mc
 
 L = 3
 
