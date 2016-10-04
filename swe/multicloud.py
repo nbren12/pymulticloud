@@ -15,7 +15,7 @@ import build.multicloud as mc
 L = 3
 
 
-variables = ['q' ,'teb', 'hs', 'tebst', 'fc', 'fc', 'fd', 'fs']
+variables = ['q' ,'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
 variable_idxs = dict(zip(variables, itertools.count(2*L)))
 variable_idxs['u'] = slice(0,2*L, 2)
 variable_idxs['t'] = slice(1,2*L, 2)
@@ -75,19 +75,72 @@ def init_mc(n=1000, dx=50/1500):
     soln[variable_idxs['t'],...][0] = np.random.randn(n) * .01
 
 
-    dt = dx * .25
+    dt = dx * .10
     return soln, dx, dt
+
+def unghosted(q):
+    return q[:,2:-2]
+
+def record_array_soln(soln, t):
+    """Create record array for solution"""
+
+    soln = unghosted(soln)
+    n = soln.shape[-1]
+
+    variables_dtype = [(k, np.float64, (n,)) for k in variables] \
+                      + [(k, np.float64, (L, n)) for k in ['u', 't']]
+    mydt = np.dtype([('time', np.float64)] + variables_dtype)
+    arr = np.zeros(1, dtype=mydt)
+
+
+    for k, v in variable_idxs.items():
+        arr[k] = soln[v]
+
+    arr['time'] = t
+
+    return arr
+
+
 
 def main():
     import logging
     logging.basicConfig(level=logging.INFO)
     soln, dx, dt = init_mc()
-    t_end = 30
+    t_end = 200
+
+    dt_out = 1.0
+    t_out = 0.0
+    i_out = 1
+    i_file = 0
+
+    arr  = record_array_soln(soln, 0.0)
+
+    nbuf = 10
+    output = np.zeros(nbuf, dtype=arr.dtype)
+    output[0] = arr
 
     for t, soln in steps(onestep, soln, dt, t_end, dx):
 
-    np.savez("soln.npz",
-             **{key: soln[variable_idxs[key]] for key in variable_idxs})
+        if i_out >= nbuf:
+            cur_file_name = "soln%05d.npz"%i_file
+            logging.info("Saving data to file `{1}` at t={0}".format(t, cur_file_name))
+            np.savez(cur_file_name, output)
+            i_file += 1
+            i_out = 0
+
+        if t > t_out:
+            logging.info("Storing output data at t={0}".format(t))
+            output[i_out] = record_array_soln(soln, t)
+            t_out += dt_out
+            i_out += 1
+
+
+    np.savez("soln%05d.npz"%i_file, output[:i_out])
+
+def test_record_array_soln():
+
+    soln, dx, dt = init_mc()
+    arr = record_array_soln(soln, 0.0)
 
 if __name__ == '__main__':
     main()

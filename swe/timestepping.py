@@ -17,6 +17,6 @@ def steps(onestep, q, dt, t_end, *args, **kwargs):
         q = onestep(q, t, dt, *args)
         t+=dt
 
-        logging.info("t = {t:.2f}".format(t=t))
+        logging.debug("t = {t:.2f}".format(t=t))
 
         yield t, q
