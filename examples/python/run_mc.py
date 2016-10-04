@@ -1,10 +1,11 @@
 """Run python multicloud model
 
 Usage:
-    run_mc.py [-r <restart_file>]
+    run_mc.py [-r <restart_file>] [--duration=<time>]
 
 Options:
-    -r --restart   use restart file to initialize run
+    -r --restart                 use restart file to initialize run
+    -d <time> --duration=<time>  run duration [default: 100]
 """
 import shutil
 import sys
@@ -19,4 +20,4 @@ if __name__ == '__main__':
     if args['--restart']:
         shutil.copy(args['<restart_file>'], 'restart.pkl')
 
-    main()
+    main(run_duration=int(args['--duration']))

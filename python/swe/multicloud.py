@@ -17,6 +17,8 @@ from .timestepping import steps
 # TODO add the multicloud code to this project
 from fortran import multicloud as mc
 
+logger = logging.getLogger(__file__)
+
 L = 3
 
 variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
@@ -25,7 +27,7 @@ variable_idxs['u'] = slice(0, 2 * L, 2)
 variable_idxs['t'] = slice(1, 2 * L, 2)
 
 
-def f(q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9):
+def f(q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, nonlinear=0.0):
     """Flux function for multicloud model"""
 
     u = q[variable_idxs['u'], ...]
@@ -33,7 +35,7 @@ def f(q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9):
     moist = q[variable_idxs['q'], ...]
 
     fq = np.empty_like(q)
-    f2m(q, fq=fq)
+    f2m(q, fq=fq, nonlin=nonlinear)
 
     # moisture equation
     fq[variable_idxs['q'], ...] = q_tld * (u[1] + lmd_tld * u[2]) \
@@ -42,11 +44,15 @@ def f(q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9):
     return fq
 
 
-def onestep(soln, time, dt, dx):
+def onestep(soln, time, dt, dx, nonlinear=1.0):
+    """Perform a single time step of the multicloud model"""
+    from functools import partial
 
     # hyperbolic terms
     periodic_bc(soln)
-    soln[:2 * L + 1, ...] = central_scheme(f, soln[:2 * L + 1, ...], dx, dt)
+    f_partial = partial(f, nonlinear=nonlinear)
+    soln[:2 * L + 1, ...] = central_scheme(f_partial, soln[:2 * L + 1, ...],
+                                           dx, dt)
 
     # multicloud model step
     mc.multicloud_rhs(soln[variable_idxs['fc']], soln[variable_idxs['fd']],
@@ -113,7 +119,7 @@ def record_array_soln(soln, t):
 
 def save_restart_file(name, soln, t, dx):
     import pickle
-    logging.info("Saving restart file at t={0}".format(t))
+    logger.info("Saving restart file `{file}` at t={0}".format(t, file=name))
     with open(name, "wb") as f:
         pickle.dump((soln, t, dx), f)
 
@@ -126,26 +132,25 @@ def load_restart_file(name):
     return arr
 
 
-def main():
+def main(run_duration=100):
     """Runs multicloud model
 
     TODO This file is too complicated needs to be refactored, and the IO needs
     to be rethought
     """
-    logging.basicConfig(level=logging.INFO)
-
     soln, dx = init_mc()
     t_start = 0.0
-    t_run = 100
+
+    logger.info("Starting run with duration={0}".format(run_duration))
 
     if os.path.exists('restart.pkl'):
         soln, t_start, dx = load_restart_file("restart.pkl")
-        logging.info("Loading restart file at t={0}".format(t_start))
+        logger.info("Loading restart file at t={0}".format(t_start))
     elif os.path.exists('ic.npz'):
         soln = init_mc_from_file("ic.npz")
 
     dt = dx * .1
-    t_end = t_start + t_run
+    t_end = t_start + run_duration
 
     dt_out = 1.0
     t_out = t_start + dt_out
@@ -165,7 +170,7 @@ def main():
     for t, soln in steps(onestep, soln, dt, (t_start, t_end), dx):
 
         if t > t_out:
-            logging.info("Storing output data at t={0}".format(t))
+            logger.info("Storing output data at t={0}".format(t))
             output[i_out] = record_array_soln(soln, t)
             t_out += dt_out
             i_out += 1
@@ -182,7 +187,7 @@ def dump_output_file(t, output, datadir):
 
     cur_file_name = str(uuid.uuid1()) + ".npz"
 
-    logging.info("Saving data to file `{1}` at t={0}".format(t, cur_file_name))
+    logger.info("Saving data to file `{1}` at t={0}".format(t, cur_file_name))
     np.savez(os.path.join(datadir, cur_file_name), output)
 
     with open(os.path.join(datadir, "datafiles.txt"), "a") as f:
