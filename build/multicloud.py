@@ -5,8 +5,10 @@ This module uses cffi to wrap a fortran function with iso_c_bindings
 import os
 from cffi import FFI
 
+_uname_library_extensions = {'Linux': '.so', 'Darwin': '.dylib'}
 
-def ldd(libname):
+
+def ldd_linux(libname):
     """List libraries linked in executable"""
     import re
     import sh
@@ -21,14 +23,19 @@ def ldd(libname):
     return libraries
 
 
-def _open_library(library_path):
+def _open_library():
     """Open the multicloud library
 
     Loads the linked gfotran path rather than the anaconda one
     """
 
-    libs = ldd(library_path)
-    ffi.dlopen(libs['libgfortran.so.3'])
+    library_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'libmulticloud' + _uname_library_extensions[os.uname().sysname])
+
+    if os.uname().sysname == 'Linux':
+        libs = ldd(library_path)
+        ffi.dlopen(libs['libgfortran.so.3'])
     _mc_library = ffi.dlopen(library_path)
     return _mc_library
 
@@ -49,9 +56,7 @@ void multicloud_wrapper(double *, double *, double *, double *,
 void multicloud_eq(double * fceq, double * fdeq, double * fseq);
 """)
 
-library_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "libmulticloud.so")
-_mc_library = _open_library(library_path)
+_mc_library = _open_library()
 
 
 def multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time,
@@ -98,6 +103,7 @@ def test_multicloud_rhs():
     hs = np.zeros(n)
 
     multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time, tebst)
+
 
 if __name__ == '__main__':
     print(equilibrium_fractions())
