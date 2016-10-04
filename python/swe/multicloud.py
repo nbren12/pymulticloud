@@ -154,13 +154,15 @@ def main(run_duration=100):
 
     dt_out = 1.0
     t_out = t_start + dt_out
-    i_out = 1
 
-    arr = record_array_soln(soln, 0.0)
-
+    # allocate output buffer
     nbuf = 10
+    arr = record_array_soln(soln, t_start)
     output = np.zeros(nbuf, dtype=arr.dtype)
+
+    # include initial data
     output[0] = arr
+    i_out = 1
 
     datadir = "data"
 
