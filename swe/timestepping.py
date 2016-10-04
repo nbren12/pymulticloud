@@ -1,20 +1,20 @@
 """Module for timesteppers and associated utilties"""
 import logging
 
-def steps(onestep, q, dt, t_end, *args, **kwargs):
+def steps(onestep, q, dt, tbound, *args, **kwargs):
     """Iterator with fixed time step
 
     Parameters
     ----------
     onestep: callable(soln, t, dt, *args, **kwargs)
     """
-    t = 0
+    t = tbound[0]
 
     yield t, q
 
-    while (t < t_end - 1e-10):
-        dt = min(dt, t_end-t)
-        q = onestep(q, t, dt, *args)
+    while (t < tbound[1] - 1e-10):
+        dt = min(dt, tbound[1]-t)
+        q = onestep(q, t, dt, *args, **kwargs)
         t+=dt
 
         logging.debug("t = {t:.2f}".format(t=t))
