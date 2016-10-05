@@ -11,6 +11,9 @@ import shutil
 import sys
 
 sys.path.insert(0, "../../")
+
+# this needs to be imported before python. not sure why
+# import fortran.multicloud
 from python.swe.multicloud import main
 
 if __name__ == '__main__':

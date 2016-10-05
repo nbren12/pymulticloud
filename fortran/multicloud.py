@@ -9,9 +9,12 @@ multicloud_rhs: single time step of multicloud model
 
 """
 import os
+import logging
 from cffi import FFI
 
 _uname_library_extensions = {'Linux': '.so', 'Darwin': '.dylib'}
+logger = logging.getLogger(__file__)
+
 
 
 def ldd_linux(libname):
@@ -38,6 +41,7 @@ def _open_library():
     library_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         'libmulticloud' + _uname_library_extensions[os.uname().sysname])
+    logger.debug("Opening library at {0}".format(library_path))
 
     if os.uname().sysname == 'Linux':
         libs = ldd_linux(library_path)

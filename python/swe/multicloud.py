@@ -10,12 +10,14 @@ import uuid
 
 import numpy as np
 
+# this import needs to happen before the others for some reason. This is
+# probably a conflict with numba.
+import fortran.multicloud as mc
+
 from .two_mode_swe import f as f2m
 from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
-# TODO add the multicloud code to this project
-from fortran import multicloud as mc
 
 logger = logging.getLogger(__file__)
 
