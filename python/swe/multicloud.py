@@ -18,7 +18,6 @@ from .two_mode_swe import f as f2m
 from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
-
 logger = logging.getLogger(__file__)
 
 
@@ -51,7 +50,6 @@ class MulticloudModel(object):
 
         return fq
 
-
     def onestep(self, soln, time, dt, dx, nonlinear=1.0):
         """Perform a single time step of the multicloud model"""
         from functools import partial
@@ -60,17 +58,18 @@ class MulticloudModel(object):
         # hyperbolic terms
         periodic_bc(soln)
         f_partial = partial(self._f, nonlinear=nonlinear)
-        soln[:2 * self.L + 1, ...] = central_scheme(f_partial, soln[:2 * self.L + 1, ...],
-                                            dx, dt)
+        soln[:2 * self.L + 1, ...] = central_scheme(
+            f_partial, soln[:2 * self.L + 1, ...], dx, dt)
 
         # multicloud model step
-        mc.multicloud_rhs(soln[variable_idxs['fc']], soln[variable_idxs['fd']],
-                          soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
-                          soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
-                          soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
-                          soln[variable_idxs['q']], soln[variable_idxs['hs']], dt,
-                          dx, time, soln[variable_idxs['tebst']],
-                          soln[variable_idxs['hc']], soln[variable_idxs['hc']])
+        mc.multicloud_rhs(
+            soln[variable_idxs['fc']], soln[variable_idxs['fd']],
+            soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
+            soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
+            soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
+            soln[variable_idxs['q']], soln[variable_idxs['hs']], dt, dx, time,
+            soln[variable_idxs['tebst']], soln[variable_idxs['hc']],
+            soln[variable_idxs['hc']])
 
         return soln
 
@@ -78,8 +77,7 @@ class MulticloudModel(object):
     def neq(self):
         return 2 * self.L + len(self.variables)
 
-
-    def init_mc(self, n=1000, dx=50 / 1500):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500):
         variable_idxs = self.variable_idxs
 
         soln = np.zeros((self.neq, n))
@@ -93,8 +91,18 @@ class MulticloudModel(object):
         # initialize temperature field with small random perturbation
         soln[variable_idxs['t'], ...][0] = np.random.randn(n) * .01
 
-        return soln, dx
+        # initialize teb
+        x = np.arange(n) * dx
+        domain_size = n * dx
 
+        tebst = asst * np.cos(2 * np.pi * (x - domain_size / 2) / lsst) * (
+            x > domain_size / 2 - lsst / 2) * (x < domain_size / 2 + lsst / 2)
+        tebst[x >= domain_size / 2 + lsst / 2] = -asst
+        tebst[x <= domain_size / 2 - lsst / 2] = -asst
+
+        soln[variable_idxs['tebst']] = tebst
+
+        return soln, dx
 
     def init_mc_from_file(self, fn):
 
@@ -132,7 +140,6 @@ class MulticloudModel(object):
 
 def unghosted(q):
     return q[:, 2:-2]
-
 
 
 def save_restart_file(name, soln, t, dx):
