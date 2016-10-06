@@ -25,7 +25,7 @@ L = 3
 
 class MulticloudModel(object):
     L = 3
-    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
+    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd']
 
     @property
     def variable_idxs(self):
@@ -66,11 +66,12 @@ class MulticloudModel(object):
 
         # multicloud model step
         mc.multicloud_rhs(soln[variable_idxs['fc']], soln[variable_idxs['fd']],
-                        soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
-                        soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
-                        soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
-                        soln[variable_idxs['q']], soln[variable_idxs['hs']], dt,
-                        dx, time, soln[variable_idxs['tebst']])
+                          soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
+                          soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
+                          soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
+                          soln[variable_idxs['q']], soln[variable_idxs['hs']], dt,
+                          dx, time, soln[variable_idxs['tebst']],
+                          soln[variable_idxs['hc']], soln[variable_idxs['hc']])
 
         return soln
 

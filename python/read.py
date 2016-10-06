@@ -21,6 +21,11 @@ def report_data(data):
     plt.savefig("u.png")
 
     plt.figure()
+    plt.contourf(data['hd'], 12, cmap='bwr')
+    plt.colorbar()
+    plt.savefig("hd.png")
+
+    plt.figure()
     plt.plot(data['time'], np.sqrt(np.mean(data['u']**2, axis=(1, 2))))
     plt.savefig("u_rms.png")
 

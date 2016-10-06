@@ -1,5 +1,5 @@
 subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
-     dx, time, tebst) bind(c)
+     dx, time, tebst, hc ,hd) bind(c)
   use, intrinsic :: iso_c_binding
   use util
   use param_mod
@@ -17,8 +17,9 @@ subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
        fc(n), fd(n), fs(n)
 
   real(c_double), intent(in) :: dt, dx, time
+  real(c_double), intent(out) :: hc(n), hd(n)
 
-  real(8) :: hds(n), hd(n), hc(n)
+  real(8) :: hds(n)
 
 
   real(8) fceq, fdeq, fseq

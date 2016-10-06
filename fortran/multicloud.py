@@ -61,7 +61,8 @@ ffi.cdef("""
 void multicloud_wrapper(double *, double *, double *, double *,
                         double *, double *, double *, double *,
                         double *, double *,
-                        int * n , double * dt, double*  dx, double*  time, double *);
+                        int * n , double * dt, double*  dx, double*  time, double *,
+                        double *, double *);
 
 void multicloud_eq(double * fceq, double * fdeq, double * fseq);
 
@@ -72,7 +73,7 @@ _mc_library = _open_library()
 
 
 def multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time,
-                   tebst):
+                   tebst, hc, hd):
     """Wrapper for multicloud model right hand side"""
     n = fc.shape[0]
     _mc_library.multicloud_wrapper(
@@ -80,7 +81,8 @@ def multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time,
         _as_pointer(u2), _as_pointer(t1), _as_pointer(t2), _as_pointer(teb),
         _as_pointer(q), _as_pointer(hs), ffi.new("int *", n),
         ffi.new("double *", dt), ffi.new("double *", dx),
-        ffi.new("double *", time), _as_pointer(tebst))
+        ffi.new("double *", time), _as_pointer(tebst),
+        _as_pointer(hc), _as_pointer(hd))
 
 
 def equilibrium_fractions():
