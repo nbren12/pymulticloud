@@ -25,17 +25,15 @@ L = 3
 
 class MulticloudModel(object):
     L = 3
+    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
 
-    def __init__(self):
-        variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
-        variable_idxs = dict(zip(variables, itertools.count(2 * L)))
+    @property
+    def variable_idxs(self):
+        variable_idxs = dict(zip(self.variables, itertools.count(2 * L)))
         variable_idxs['u'] = slice(0, 2 * L, 2)
         variable_idxs['t'] = slice(1, 2 * L, 2)
 
-        self.variable_idxs = variable_idxs
-        self.variables = variables
-
-
+        return variable_idxs
 
     def _f(self, q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, nonlinear=0.0):
         """Flux function for multicloud model"""
