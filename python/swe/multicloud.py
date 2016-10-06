@@ -21,7 +21,6 @@ from .timestepping import steps
 
 logger = logging.getLogger(__file__)
 
-L = 3
 
 class MulticloudModel(object):
     L = 3
@@ -61,7 +60,7 @@ class MulticloudModel(object):
         # hyperbolic terms
         periodic_bc(soln)
         f_partial = partial(self._f, nonlinear=nonlinear)
-        soln[:2 * L + 1, ...] = central_scheme(f_partial, soln[:2 * L + 1, ...],
+        soln[:2 * L + 1, ...] = central_scheme(f_partial, soln[:2 * self.L + 1, ...],
                                             dx, dt)
 
         # multicloud model step
