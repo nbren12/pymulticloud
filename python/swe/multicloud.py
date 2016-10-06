@@ -28,9 +28,9 @@ class MulticloudModel(object):
 
     @property
     def variable_idxs(self):
-        variable_idxs = dict(zip(self.variables, itertools.count(2 * L)))
-        variable_idxs['u'] = slice(0, 2 * L, 2)
-        variable_idxs['t'] = slice(1, 2 * L, 2)
+        variable_idxs = dict(zip(self.variables, itertools.count(2 * self.L)))
+        variable_idxs['u'] = slice(0, 2 * self.L, 2)
+        variable_idxs['t'] = slice(1, 2 * self.L, 2)
 
         return variable_idxs
 
@@ -60,7 +60,7 @@ class MulticloudModel(object):
         # hyperbolic terms
         periodic_bc(soln)
         f_partial = partial(self._f, nonlinear=nonlinear)
-        soln[:2 * L + 1, ...] = central_scheme(f_partial, soln[:2 * self.L + 1, ...],
+        soln[:2 * self.L + 1, ...] = central_scheme(f_partial, soln[:2 * self.L + 1, ...],
                                             dx, dt)
 
         # multicloud model step
@@ -118,7 +118,7 @@ class MulticloudModel(object):
         n = soln.shape[-1]
 
         variables_dtype = [(k, np.float64, (n,)) for k in variables] \
-                        + [(k, np.float64, (L, n)) for k in ['u', 't']]
+                        + [(k, np.float64, (self.L, n)) for k in ['u', 't']]
         mydt = np.dtype([('time', np.float64)] + variables_dtype)
         arr = np.zeros(1, dtype=mydt)
 

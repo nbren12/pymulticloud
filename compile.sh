@@ -1,3 +1,3 @@
 #!/bin/sh
-cmake .
+FC=gfortran CC=gcc CXX=g++ cmake .
 make multicloud
