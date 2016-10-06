@@ -4,7 +4,8 @@ module cmt_mod
   public :: updatecmt, init_cmt, stochastic_cmt
   private
 
-  logical :: stochastic_cmt = .false.
+  ! Toggle for stochastic cmt
+  logical :: stochastic_cmt = .true.
 
   ! storage arrays for adams-bashforth
   ! real(8), dimension(ntrunc, n) :: ko1 = 0d0, ko2 = 0d0

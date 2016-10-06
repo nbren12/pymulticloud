@@ -50,10 +50,10 @@ def _open_library():
     return _mc_library
 
 
-def _as_pointer(numpy_array):
+def _as_pointer(numpy_array, dtype="double"):
     assert numpy_array.flags[
         'F_CONTIGUOUS'], "array is not contiguous in memory (Fortran order)"
-    return ffi.cast("double*", numpy_array.__array_interface__['data'][0])
+    return ffi.cast("{0}*".format(dtype), numpy_array.__array_interface__['data'][0])
 
 
 ffi = FFI()
@@ -64,6 +64,8 @@ void multicloud_wrapper(double *, double *, double *, double *,
                         int * n , double * dt, double*  dx, double*  time, double *);
 
 void multicloud_eq(double * fceq, double * fdeq, double * fseq);
+
+void cmt_wrapper(double *, int *, double *, double*, double *, int *, int *, double *);
 """)
 
 _mc_library = _open_library()
@@ -90,6 +92,25 @@ def equilibrium_fractions():
     _mc_library.multicloud_eq(fc, fd, fs)
 
     return fc[0], fd[0], fs[0]
+
+def cmt_update(u, scmt, hd, hc, hs, dt):
+    n, ntrunc = u.shape
+
+    u_p = _as_pointer(u)
+    scmt_p = _as_pointer(u, "int")
+    hd_p = _as_pointer(hd)
+    hs_p = _as_pointer(hc)
+    hc_p = _as_pointer(hd)
+
+    n_p = ffi.new("int *", n)
+    ntr_p = ffi.new("int *", ntrunc)
+    dt_p = ffi.new("double *", dt)
+
+
+    _mc_library.cmt_wrapper(u_p, scmt_p, hd_p, hc_p, hs_p, n_p, ntr_p, dt_p)
+
+    return u, scmt
+
 
 
 def test_multicloud_rhs():
