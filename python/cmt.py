@@ -63,10 +63,14 @@ def calc_du(u):
 
     uz = transform_mat[32].dot(u)
 
-    iopt = np.abs(uz[2:14] - uz[0]).argmax()
-    dulow = uz[iopt]-uz[0]
 
-    imid = np.abs((uz[16:]-uz[iopt])).argmax()
+    iopt = np.abs(uz[2:14] - uz[0,None]).argmax(axis=0)
+    uzst = uz[iopt,np.arange(uz.shape[1])]
+
+    dulow = uzst-uz[0]
+
+
+    imid = np.abs((uz[16:]-uzst[None,:])).argmax(axis=0)
     dumid = uz[imid]-uz[iopt]
 
     return dulow, dumid
@@ -143,8 +147,13 @@ def rhs(t, u, scmt, qd, u_relax):
 
     return du
 
+def stochastic_integrate_array(scmt, dulow, qd, qc, lmd, a, b):
+    for i in range(scmt.shape[0]):
+        scmt[i] = stochastic_integrate(scmt[i], dulow[i], qd[i], qc[i], lmd[i], a, b)
 
-def stochastic_integrate(scmt, dulow, a, b, qd, qc, lmd):
+    return scmt
+
+def stochastic_integrate(scmt, dulow, qd, qc, lmd, a, b):
     """Stochastic integration using gillespie algorithm"""
     from numpy.random import rand
 
@@ -191,7 +200,8 @@ def interpolant_hash(tout, qd, dt_in):
 
 def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
 
-    output_scmt = np.zeros((tout.shape[0], ))
+
+    output_scmt = np.zeros((tout.shape[0], u(0).shape[1]))
 
     # Precalculate qd at necessary times
     qd_cache = interpolant_hash(tout, qd, dt_in)
@@ -203,6 +213,7 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
     tout_iter = tout.flat
     t = next(tout_iter)
     for i, next_time in enumerate(tout_iter):
+        logger.info("time={0}".format(t))
         while t < next_time - 1e-10:
             dt = min(next_time - t, dt_in)
 
@@ -213,7 +224,7 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
 
             # stochastic integration
             dulow, dumid = calc_du(ut)
-            scmt = stochastic_integrate(scmt, dulow, t, t + dt, qdt, qct, lmdt)
+            scmt = stochastic_integrate_array(scmt, dulow, qdt, qct, lmdt, t, t + dt)
             t += dt
 
         # store output
@@ -271,6 +282,48 @@ def output_to_dataframe(t, output, output_cmt):
                   'cmt': output_cmt}, index=t)
     return df
 
+def main_stochastic_range(datadir, stochonly=True):
+    from .read import read_data
+    import matplotlib.pyplot as plt
+
+
+    # read qd
+    logger.info("starting column cmt run")
+    data = read_data(datadir)
+
+    t_data = data['time'][:] * T
+    qd_data = data['hd'] * alpha_bar / T
+    qc_data = data['hc'] * alpha_bar / T
+    lmd_data = .4 * np.ones_like(qd_data)
+    u_relax_data = data['u'] * c
+
+
+    qc = interp1d(t_data, qc_data, axis=0)
+    qd = interp1d(t_data, qd_data, axis=0)
+    u_relax = interp1d(t_data, u_relax_data, axis=0)
+    lmd =  interp1d(t_data, lmd_data, axis=0)
+
+
+
+
+    # initialization
+    n = qd_data.shape[1]
+    scmt = np.zeros(n, dtype=np.int32)
+
+    # tout
+    tout = np.mgrid[t_data.min():t_data.max():hour]
+
+    if stochonly:
+        output_cmt = run_cmt_model(u_relax, scmt, tout, qd, qc, lmd, dt_in=600)
+        df = pd.DataFrame({'cmt': output_cmt}, index=tout)
+    else:
+        logger.info("Starting column model run")
+        output, output_cmt = run_column_model(u, scmt, tout, qd, qc, lmd,
+                                            u_relax=u_relax, dt_in=600)
+
+        df = output_to_dataframe(tout, output, output_cmt)
+
+    return df
 
 def main_stochastic(datadir, iloc=500, stochonly=True):
     from .read import read_data
@@ -321,8 +374,8 @@ def main_stochastic(datadir, iloc=500, stochonly=True):
 
 if __name__ == '__main__':
     # test_calculate_dulow()
+    logging.basicConfig(level=logging.INFO)
     import cProfile
     cProfile.run("""
-for i in range(20):
-    main_stochastic("data/", i)
+main_stochastic_range("data/")
         """, "cmt.prof")
