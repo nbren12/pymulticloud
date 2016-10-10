@@ -69,7 +69,7 @@ class MulticloudModel(object):
             soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
             soln[variable_idxs['q']], soln[variable_idxs['hs']], dt, dx, time,
             soln[variable_idxs['tebst']], soln[variable_idxs['hc']],
-            soln[variable_idxs['hc']])
+            soln[variable_idxs['hd']])
 
         return soln
 
