@@ -30,6 +30,16 @@ dulow = 0
 
 nu = 3
 
+transform_mat = {}; z={};
+nzgrid = 32
+
+z = np.arange(0,nzgrid) * np.pi/nzgrid
+m = np.arange(0, nu)
+
+transform_mat[nzgrid] = sqrt(2) * np.cos(z[:,None] * m[None,:])
+transform_mat[nzgrid][:,0] = 1.0
+
+
 
 def cos_series_val(z, u):
     z = np.array(z, dtype=np.float64)
@@ -49,19 +59,17 @@ def calculate_dulow(u, a, b, z0=0, **kwargs):
     opt = minimize_scalar(f, bounds=(a, b), method='Bounded', **kwargs)
     return opt.x, cos_series_val(opt.x, u) - cos_series_val(z0, u)
 
+def calc_du(u):
 
-def calculate_dulow_approx(u, a, b, z0=0, **kwargs):
+    uz = transform_mat[32].dot(u)
 
-    def f(z):
-        return -(cos_series_val(z, u) - cos_series_val(z0, u))**2
+    iopt = np.abs(uz[2:14] - uz[0]).argmax()
+    dulow = uz[iopt]-uz[0]
 
-    zgrid = np.linspace(a, b, 8)
+    imid = np.abs((uz[16:]-uz[iopt])).argmax()
+    dumid = uz[imid]-uz[iopt]
 
-    iopt = f(zgrid).argmin()
-    zopt = zgrid[iopt]
-
-    return zopt, cos_series_val(zopt, u) - cos_series_val(z0, u)
-
+    return dulow, dumid
 
 def test_calculate_dulow():
     import matplotlib.pyplot as plt
@@ -71,7 +79,6 @@ def test_calculate_dulow():
     u = np.random.rand(3)
 
     zopt, dulow = calculate_dulow(u, a, b)
-    # zopt, dulow = calculate_dulow_approx(u, a, b)
 
     z = np.linspace(a, b, 100)
 
@@ -122,9 +129,7 @@ def rhs(t, u, scmt, qd, u_relax):
     elif scmt == 1:
         du = -d2 * (u - u_relax)
     elif scmt == 2:
-        # calculate dumid
-        zst, dulow = calculate_dulow_approx(u, pi / 16, 7 * pi / 16, z0=0)
-        _, dumid = calculate_dulow_approx(u, pi / 16 * 7, pi / 16 * 13, z0=zst)
+        dulow, dumid = calc_du(u)
 
         du = np.zeros_like(u)
         if dumid * dulow < 0:
@@ -207,7 +212,7 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
             ut  = u_cache[t]
 
             # stochastic integration
-            zst, dulow = calculate_dulow_approx(ut, pi / 16, 7 * pi / 16, z0=0)
+            dulow, dumid = calc_du(ut)
             scmt = stochastic_integrate(scmt, dulow, t, t + dt, qdt, qct, lmdt)
             t += dt
 
@@ -240,14 +245,15 @@ def run_column_model(u, scmt, tout, qd, qc, lmd, u_relax=None, dt_in=600):
             qdt = qd_cache[t]
             qct = qc_cache[t]
             lmdt = lmd_cache[t]
+            udt = u_relax_cache[t]
 
             # stochastic integration
-            zst, dulow = calculate_dulow_approx(u, pi / 16, 7 * pi / 16, z0=0)
+            dulow, dumid = calc_du(udt)
             scmt = stochastic_integrate(scmt, dulow, t, t + dt, qdt, qct, lmdt)
             t += dt
 
             # deterministic integration
-            fu = rhs(t, u, scmt, qdt, u_relax_cache[t])
+            fu = rhs(t, u, scmt, qdt, udt)
             u += dt * fu
 
             # store output
@@ -314,6 +320,9 @@ def main_stochastic(datadir, iloc=500, stochonly=True):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     # test_calculate_dulow()
-    main_stochastic("data/")
+    import cProfile
+    cProfile.run("""
+for i in range(20):
+    main_stochastic("data/", i)
+        """, "cmt.prof")
