@@ -2,208 +2,281 @@
 
 This code uses the forcings and gillespie algorithm from the fortran code
 """
-import itertools
 import sys
-import os
 import logging
-import uuid
-
 import numpy as np
-
-# this import needs to happen before the others for some reason. This is
-# probably a conflict with numba.
-import fortran.multicloud as mc
-
-from .two_mode_swe import f as f2m
-from .tadmor_1d import periodic_bc, central_scheme
-from .timestepping import steps
-
+import pandas as pd
+from numpy import log, exp, sqrt, pi, cos
+from scipy.interpolate import interp1d
 
 logger = logging.getLogger(__file__)
 
-L = 3
+hour = 3600
+day = 86400
+km = 1000
 
-variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs']
-variable_idxs = dict(zip(variables, itertools.count(2 * L)))
-variable_idxs['u'] = slice(0, 2 * L, 2)
-variable_idxs['t'] = slice(1, 2 * L, 2)
+T = 2.9575e+04
+L = 1.4827e+06
+c = L / T
+alpha_bar = 15.34
 
+tscale = T
+qscale = alpha_bar
 
-def f(q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, nonlinear=0.0):
-    """Flux function for multicloud model"""
+# Useful global variables
+hsbar = 0
+lmd = 0
+dulow = 0
 
-    u = q[variable_idxs['u'], ...]
-    T = q[variable_idxs['t'], ...]
-    moist = q[variable_idxs['q'], ...]
-
-    fq = np.empty_like(q)
-    f2m(q, fq=fq, nonlin=nonlinear)
-
-    # moisture equation
-    fq[variable_idxs['q'], ...] = q_tld * (u[1] + lmd_tld * u[2]) \
-                                  + moist * (u[1] + alpha_tld * u[2])
-
-    return fq
+nu = 3
 
 
-def onestep(soln, time, dt, dx, nonlinear=1.0):
-    """Perform a single time step of the multicloud model"""
-    from functools import partial
+def cos_series_val(z, u):
+    z = np.array(z, dtype=np.float64)
+    out = np.zeros_like(z)
+    for i in range(u.shape[0]):
+        out += sqrt(2) * u[i] * cos((i + 1) * z)
 
-    # hyperbolic terms
-    periodic_bc(soln)
-    f_partial = partial(f, nonlinear=nonlinear)
-    soln[:2 * L + 1, ...] = central_scheme(f_partial, soln[:2 * L + 1, ...],
-                                           dx, dt)
-
-    # multicloud model step
-    mc.multicloud_rhs(soln[variable_idxs['fc']], soln[variable_idxs['fd']],
-                      soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
-                      soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
-                      soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
-                      soln[variable_idxs['q']], soln[variable_idxs['hs']], dt,
-                      dx, time, soln[variable_idxs['tebst']])
-
-    return soln
+    return out
 
 
-def init_mc(n=1000, dx=50 / 1500):
-    import numpy as np
-    neq = 2 * L + len(variables)
-    soln = np.zeros((neq, n))
+def calculate_dulow(u, a, b, z0=0, **kwargs):
+    from scipy.optimize import minimize_scalar
 
-    fceq, fdeq, fseq = mc.equilibrium_fractions()
+    def f(z):
+        return -(cos_series_val(z, u) - cos_series_val(z0, u))**2
 
-    soln[variable_idxs['fc']] = fceq
-    soln[variable_idxs['fd']] = fdeq
-    soln[variable_idxs['fs']] = fseq
-
-    # initialize temperature field with small random perturbation
-    soln[variable_idxs['t'], ...][0] = np.random.randn(n) * .01
-
-    return soln, dx
+    opt = minimize_scalar(f, bounds=(a, b), method='Bounded', **kwargs)
+    return opt.x, cos_series_val(opt.x, u) - cos_series_val(z0, u)
 
 
-def init_mc_from_file(fn):
-    neq = 2 * L + len(variables)
-    icdata = np.load(fn)['arr_0'][-1]
-    n = icdata['teb'].shape[0] + 4
-    soln = np.zeros((neq, n))
+def calculate_dulow_approx(u, a, b, z0=0, **kwargs):
 
-    for key in variable_idxs:
-        soln[variable_idxs[key]][..., 2:-2] = icdata[key]
+    def f(z):
+        return -(cos_series_val(z, u) - cos_series_val(z0, u))**2
 
-    return soln
+    zgrid = np.linspace(a, b, 8)
 
+    iopt = f(zgrid).argmin()
+    zopt = zgrid[iopt]
 
-def unghosted(q):
-    return q[:, 2:-2]
+    return zopt, cos_series_val(zopt, u) - cos_series_val(z0, u)
 
 
-def record_array_soln(soln, t):
-    """Create record array for solution"""
+def test_calculate_dulow():
+    import matplotlib.pyplot as plt
+    a = 1 * pi / 16
+    b = 7 * pi / 16
 
-    soln = unghosted(soln)
-    n = soln.shape[-1]
+    u = np.random.rand(3)
 
-    variables_dtype = [(k, np.float64, (n,)) for k in variables] \
-                      + [(k, np.float64, (L, n)) for k in ['u', 't']]
-    mydt = np.dtype([('time', np.float64)] + variables_dtype)
-    arr = np.zeros(1, dtype=mydt)
+    zopt, dulow = calculate_dulow(u, a, b)
+    # zopt, dulow = calculate_dulow_approx(u, a, b)
 
-    for k, v in variable_idxs.items():
-        arr[k] = soln[v]
+    z = np.linspace(a, b, 100)
 
-    arr['time'] = t
+    plt.plot(cos_series_val(z, u), z)
+    plt.plot(cos_series_val(zopt, u), zopt, 'ro')
+    plt.show()
 
-    return arr
-
-
-def save_restart_file(name, soln, t, dx):
-    import pickle
-    logger.info("Saving restart file `{file}` at t={0}".format(t, file=name))
-    with open(name, "wb") as f:
-        pickle.dump((soln, t, dx), f)
+def heaviside(x):
+    return 0.5 * (np.sign(x) + 1)
 
 
-def load_restart_file(name):
-    import pickle
-    with open(name, "rb") as f:
-        arr = pickle.load(f)
+def transition_rates(dulow, qd, qc, lmd):
+    """Transition rates for stochastic CMT process"""
+    taur = 8 * hour
+    beta_lmd = 1
+    beta_q = 1 / (10 / day)
+    beta_u = 1 / (10.0)
+    qcref = 10 / day
+    qdref = 10 / day
+    duref = 20
+    dumin = 5
 
-    return arr
+    T = np.zeros((3, 3))
+
+    dulow = abs(dulow)
+
+    T[0, 1] = heaviside(qd) * exp(beta_lmd * (1 - lmd) + beta_q * qd)
+    T[1, 2] = heaviside(dulow - dumin) * exp(beta_u * dulow + beta_q * qc)
+
+    T[1, 0] = exp(beta_lmd * lmd + beta_q * (qdref - qd))
+    T[2, 0] = T[1, 0]
+    T[2, 1] = exp(beta_u * (duref - dulow) + beta_q * (qcref - qc))
+
+    T /= taur
+
+    return T
 
 
-def main(run_duration=100):
-    """Runs multicloud model
+def rhs(t, u, scmt, qd, u_relax):
 
-    TODO This file is too complicated needs to be refactored, and the IO needs
-    to be rethought
+    d1 = 1 / (3 * day)
+    d2 = 1 / (3 * day)
+    tauf = 1.25 * day
+    qdref = 10 / day
+
+    if scmt == 0:
+        du = -d1 * (u - u_relax)
+    elif scmt == 1:
+        du = -d2 * (u - u_relax)
+    elif scmt == 2:
+        # calculate dumid
+        zst, dulow = calculate_dulow_approx(u, pi / 16, 7 * pi / 16, z0=0)
+        _, dumid = calculate_dulow_approx(u, pi / 16 * 7, pi / 16 * 13, z0=zst)
+
+        du = np.zeros_like(u)
+        if dumid * dulow < 0:
+            kappa = -(qd/ qdref)**2 * dumid / tauf
+
+            du[0] = kappa
+            du[1] = 0.0
+            du[2] = -kappa
+    else:
+        raise ValueError("scmt must be either 0, 1, or 2")
+
+    return du
+
+
+def stochastic_integrate(scmt, dulow, a, b, qd, qc, lmd):
+    """Stochastic integration using gillespie algorithm"""
+    from numpy.random import rand
+
+    # stochastic integration
+    # uses gillespie's algorithm
+    t = a
+
+    # do while loop
+    while True:
+        rates = transition_rates(dulow, qd, qc, lmd)
+        rates = np.cumsum(rates[scmt, :])
+        U = rand()
+        tau = -log(U) / rates[-1]
+
+        if t + tau < b:
+            t += tau
+            U = rand()
+            action_index = np.searchsorted(rates, U * rates[-1])
+            scmt = action_index
+        else:
+            break
+
+    return scmt
+
+
+def interpolant_hash(tout, qd, dt_in):
+    """ Create a hash table of the needed Qd values
     """
-    soln, dx = init_mc()
-    t_start = 0.0
+    tout_iter = tout.flat
+    t = next(tout_iter)
+    cache_times = [t]
+    for i, next_time in enumerate(tout_iter):
+        while t < next_time - 1e-10:
+            dt = min(next_time - t, dt_in)
+            t += dt
+            cache_times.append(t)
 
-    logger.info("Starting run with duration={0}".format(run_duration))
+    qd_interp = qd(np.array(cache_times))
+    qd_cache = dict(zip(cache_times, qd_interp))
 
-    if os.path.exists('restart.pkl'):
-        soln, t_start, dx = load_restart_file("restart.pkl")
-        logger.info("Loading restart file at t={0}".format(t_start))
-    elif os.path.exists('ic.npz'):
-        soln = init_mc_from_file("ic.npz")
-
-    dt = dx * .1
-    t_end = t_start + run_duration
-
-    dt_out = 1.0
-    t_out = t_start + dt_out
-
-    # allocate output buffer
-    nbuf = 10
-    arr = record_array_soln(soln, t_start)
-    output = np.zeros(nbuf, dtype=arr.dtype)
-
-    # include initial data
-    output[0] = arr
-    i_out = 1
-
-    datadir = "data"
-
-    if not os.path.isdir(datadir):
-        os.mkdir(datadir)
-
-    for t, soln in steps(onestep, soln, dt, (t_start, t_end), dx):
-
-        if t > t_out:
-            logger.info("Storing output data at t={0}".format(t))
-            output[i_out] = record_array_soln(soln, t)
-            t_out += dt_out
-            i_out += 1
-
-            if i_out >= nbuf:
-                dump_output_file(t, output, datadir)
-                i_out = 0
-
-    dump_output_file(t, output[:i_out], datadir)
-    save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
+    return qd_cache
 
 
-def dump_output_file(t, output, datadir):
-
-    cur_file_name = str(uuid.uuid1()) + ".npz"
-
-    logger.info("Saving data to file `{1}` at t={0}".format(t, cur_file_name))
-    np.savez(os.path.join(datadir, cur_file_name), output)
-
-    with open(os.path.join(datadir, "datafiles.txt"), "a") as f:
-        f.write(cur_file_name)
-        f.write("\n")
 
 
-def test_record_array_soln():
+def run_column_model(u, scmt, tout, qd, qc, lmd, u_relax=None, dt_in=600):
 
-    soln, dx, dt = init_mc()
-    arr = record_array_soln(soln, 0.0)
+    output = np.zeros((tout.shape[0], len(u)))
+    output_scmt = np.zeros((tout.shape[0], ))
+    output[0, :] = u
+
+    # Precalculate qd at necessary times
+    qd_cache = interpolant_hash(tout, qd, dt_in)
+    qc_cache = interpolant_hash(tout, qc, dt_in)
+    lmd_cache = interpolant_hash(tout, lmd, dt_in)
+    u_relax_cache = interpolant_hash(tout, u_relax, dt_in)
+
+
+    tout_iter = tout.flat
+    t = next(tout_iter)
+    for i, next_time in enumerate(tout_iter):
+        while t < next_time - 1e-10:
+            dt = min(next_time - t, dt_in)
+
+
+            qdt = qd_cache[t]
+            qct = qc_cache[t]
+            lmdt = lmd_cache[t]
+
+            # stochastic integration
+            zst, dulow = calculate_dulow_approx(u, pi / 16, 7 * pi / 16, z0=0)
+            scmt = stochastic_integrate(scmt, dulow, t, t + dt, qdt, qct, lmdt)
+            t += dt
+
+            # deterministic integration
+            fu = rhs(t, u, scmt, qdt, u_relax_cache[t])
+            u += dt * fu
+
+            # store output
+        logger.info("Time %.2f days"%(next_time/day))
+        output[i, :] = u
+        output_scmt[i] = scmt
+
+    return output, output_scmt
+
+def output_to_dataframe(t, output, output_cmt):
+    
+    df = pd.DataFrame({'u1': output[:,0],
+                  'u2': output[:,1],
+                  'u3': output[:,2],
+                  'cmt': output_cmt}, index=t)
+    return df
+
+
+def main_stochastic(datadir, output_filename, iloc=500):
+    from .read import read_data
+    import matplotlib.pyplot as plt
+
+
+    # read qd
+    logger.info("Reading in and interpolating Qd time series")
+    data = read_data(datadir)
+
+    t_data = data['time'][:] * T
+    qd_data = data['hd'][:,iloc] * alpha_bar / T
+    qc_data = data['hc'][:,iloc] * alpha_bar / T
+
+    u_relax_data = np.zeros((t_data.shape[0], 3))
+    u_relax_data[:,:2] = data['u'][:,1:3,iloc] * c
+
+
+    qc = interp1d(t_data, qc_data)
+    qd = interp1d(t_data, qd_data)
+    u_relax = interp1d(t_data, u_relax_data, axis=0)
+
+    lmd = lambda t: 0.0 * t + 0.4
+
+    # initialization
+    u = np.zeros((3, ))
+    u[0] = 0
+    u[1] = 0
+
+    scmt = 0
+
+    # tout
+    tout = np.mgrid[t_data.min():t_data.max():hour]
+
+    logger.info("Starting column model run")
+    output, output_cmt = run_column_model(u, scmt, tout, qd, qc, lmd,
+                                          u_relax=u_relax, dt_in=600)
+
+    output_to_dataframe(tout, output, output_cmt).to_csv(output_filename)
+
+    return output_to_dataframe(tout, output, output_cmt)
+
 
 
 if __name__ == '__main__':
-    main()
+    # test_calculate_dulow()
+    main_stochastic("data/", "cmt.csv")
