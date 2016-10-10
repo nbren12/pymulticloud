@@ -1,6 +1,13 @@
 """Implementation of multicloud model with cmt in python
 
 This code uses the forcings and gillespie algorithm from the fortran code
+
+Functions
+---------
+stochastic_cmt_diagnostic_run(datadir)
+stochastic_integrate_array(scmt, rates, a, b):
+transition_rates_array(u, qd, qc, lmd)
+rhs(t, u, scmt, qd, u_relax):
 """
 import sys
 import logging
@@ -128,6 +135,12 @@ def transition_rates(dulow, qd, qc, lmd, T):
 
 @jit
 def transition_rates_array(u, qd, qc, lmd):
+    """Compute transition rates for scmt
+
+    Returns
+    -------
+    rates, dulow, duhigh
+    """
     n = qd.shape[0]
     rates = np.zeros((3,3, n))
     dulow, dumid = calc_du(u)
@@ -135,7 +148,7 @@ def transition_rates_array(u, qd, qc, lmd):
     for i in range(n):
         transition_rates(dulow[i], qd[i], qc[i], lmd[i], rates[:,:,i])
 
-    return rates
+    return rates, dulow, dumid
 
 def rhs(t, u, scmt, qd, u_relax):
 
@@ -303,7 +316,7 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
             ut  = u_cache[t]
 
             # stochastic integration
-            rates = transition_rates_array(ut, qdt, qct, lmdt)
+            rates,_,_ = transition_rates_array(ut, qdt, qct, lmdt)
             scmt = stochastic_integrate_array(scmt, rates, t, t + dt)
             t += dt
 
@@ -314,7 +327,15 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
     return output_scmt
 
 
-def main_stochastic_range(datadir):
+def stochastic_cmt_diagnostic_run(datadir):
+    """Run stochastic cmt scheme in diagnostic mode on previous output from the
+    multicloud model.
+
+    Parameters
+    ----------
+    datadir: str
+        directory containing output from the python version of the multicloud model
+    """
     from .read import read_data
     import matplotlib.pyplot as plt
 
@@ -348,15 +369,10 @@ def main_stochastic_range(datadir):
 
     return tout, output_cmt
 
-
+def main():
+    t, scmt = stochastic_cmt_diagnostic_run("data")
+    np.savez("scmt.npz", t=t, scmt=scmt)
 
 if __name__ == '__main__':
-    # test_calculate_dulow()
-    logging.basicConfig(level=logging.INFO)
-    cProfile.run("""
-main_stochastic_range("data/")
-        """, "cmt.prof")
+    main()
 
-#     pdb.run("""
-# main_stochastic_range("data/")
-#         """)
