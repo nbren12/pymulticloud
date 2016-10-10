@@ -157,11 +157,18 @@ def load_restart_file(name):
     return arr
 
 
-def main(run_duration=100, solver=None):
+def main(run_duration=100, dt_out=1.0, solver=None):
     """Runs multicloud model
 
     TODO This file is too complicated needs to be refactored, and the IO needs
     to be rethought
+
+    Parameters
+    ----------
+    run_duration: float
+        length of simulation from start_time
+    dt_out: float
+        output interval
     """
     t_start = 0.0
 
@@ -181,7 +188,6 @@ def main(run_duration=100, solver=None):
     dt = dx * .1
     t_end = t_start + run_duration
 
-    dt_out = 1.0
     t_out = t_start + dt_out
 
     # allocate output buffer
