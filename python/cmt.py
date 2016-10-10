@@ -184,6 +184,38 @@ def interpolant_hash(tout, qd, dt_in):
 
 
 
+def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
+
+    output_scmt = np.zeros((tout.shape[0], ))
+
+    # Precalculate qd at necessary times
+    qd_cache = interpolant_hash(tout, qd, dt_in)
+    qc_cache = interpolant_hash(tout, qc, dt_in)
+    lmd_cache = interpolant_hash(tout, lmd, dt_in)
+    u_cache = interpolant_hash(tout, u, dt_in)
+
+
+    tout_iter = tout.flat
+    t = next(tout_iter)
+    for i, next_time in enumerate(tout_iter):
+        while t < next_time - 1e-10:
+            dt = min(next_time - t, dt_in)
+
+            qdt = qd_cache[t]
+            qct = qc_cache[t]
+            lmdt = lmd_cache[t]
+            ut  = u_cache[t]
+
+            # stochastic integration
+            zst, dulow = calculate_dulow_approx(ut, pi / 16, 7 * pi / 16, z0=0)
+            scmt = stochastic_integrate(scmt, dulow, t, t + dt, qdt, qct, lmdt)
+            t += dt
+
+        # store output
+        logger.info("Time %.2f days"%(next_time/day))
+        output_scmt[i] = scmt
+
+    return output_scmt
 
 def run_column_model(u, scmt, tout, qd, qc, lmd, u_relax=None, dt_in=600):
 
@@ -234,13 +266,13 @@ def output_to_dataframe(t, output, output_cmt):
     return df
 
 
-def main_stochastic(datadir, output_filename, iloc=500):
+def main_stochastic(datadir, iloc=500, stochonly=True):
     from .read import read_data
     import matplotlib.pyplot as plt
 
 
     # read qd
-    logger.info("Reading in and interpolating Qd time series")
+    logger.info("starting column cmt run for iloc={0}".format(iloc))
     data = read_data(datadir)
 
     t_data = data['time'][:] * T
@@ -267,16 +299,21 @@ def main_stochastic(datadir, output_filename, iloc=500):
     # tout
     tout = np.mgrid[t_data.min():t_data.max():hour]
 
-    logger.info("Starting column model run")
-    output, output_cmt = run_column_model(u, scmt, tout, qd, qc, lmd,
-                                          u_relax=u_relax, dt_in=600)
+    if stochonly:
+        output_cmt = run_cmt_model(u_relax, scmt, tout, qd, qc, lmd, dt_in=600)
+        df = pd.DataFrame({'cmt': output_cmt}, index=tout)
+    else:
+        logger.info("Starting column model run")
+        output, output_cmt = run_column_model(u, scmt, tout, qd, qc, lmd,
+                                            u_relax=u_relax, dt_in=600)
 
-    output_to_dataframe(tout, output, output_cmt).to_csv(output_filename)
+        df = output_to_dataframe(tout, output, output_cmt)
 
-    return output_to_dataframe(tout, output, output_cmt)
+    return df
 
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     # test_calculate_dulow()
-    main_stochastic("data/", "cmt.csv")
+    main_stochastic("data/")
