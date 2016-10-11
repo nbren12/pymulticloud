@@ -169,7 +169,7 @@ def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
         elif scmt[i] == 2:
             if dumid[i] * dulow[i] < 0:
-                kappa = -(qd[i]/ qdref)**2 / tauf
+                kappa = (qd[i]/ qdref)**2 / tauf
             else:
                 kappa = 0
 

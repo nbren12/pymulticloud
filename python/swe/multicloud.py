@@ -80,7 +80,7 @@ class MulticloudModel(object):
     def neq(self):
         return 2 * self.L + len(self.variables)
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500):
         variable_idxs = self.variable_idxs
 
         soln = np.zeros((self.neq, n))
