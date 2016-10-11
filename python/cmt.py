@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from numpy import log, exp, sqrt, pi, cos
 from scipy.interpolate import interp1d
-from numba import jit
+from numba import jit, guvectorize
 from random import uniform
 
 logger = logging.getLogger(__file__)
@@ -150,31 +150,35 @@ def transition_rates_array(u, qd, qc, lmd):
 
     return rates, dulow, dumid
 
-def rhs(t, u, scmt, qd, u_relax):
+@jit(nopython=True)
+def rhs(u, scmt, qd, dulow, dumid, u_relax):
 
     d1 = 1 / (3 * day)
     d2 = 1 / (3 * day)
     tauf = 1.25 * day
     qdref = 10 / day
 
-    if scmt == 0:
-        du = -d1 * (u - u_relax)
-    elif scmt == 1:
-        du = -d2 * (u - u_relax)
-    elif scmt == 2:
-        dulow, dumid = calc_du(u)
+    du  = np.empty_like(u)
 
-        du = np.zeros_like(u)
-        if dumid * dulow < 0:
-            kappa = -(qd/ qdref)**2 * dumid / tauf
+    for i in range(scmt.shape[0]):
 
-            du[0] = kappa
-            du[1] = 0.0
-            du[2] = -kappa
-    else:
-        raise ValueError("scmt must be either 0, 1, or 2")
+        if scmt[i] == 0:
+            for j in range(u.shape[0]):
+                du[j,i] = -d1 * (u[j,i] - u_relax[j,i])
+        elif scmt[i] == 1:
+            for j in range(u.shape[0]):
+                du[j,i] = -d2 * (u[j,i] - u_relax[j,i])
+
+        elif scmt[i] == 2:
+            if dumid[i] * dulow[i] < 0:
+                kappa = -(qd[i]/ qdref)**2 * dumid[i] / tauf
+
+                du[0,i] = kappa
+                du[1,i] = 0.0
+                du[2,i] = -kappa
 
     return du
+
 
 def stochastic_integrate_array(scmt, rates, a, b):
     """Preform Gillespie algorithm for an array of data
@@ -189,6 +193,11 @@ def stochastic_integrate_array(scmt, rates, a, b):
         starting time
     b: float
         ending time
+
+    Returns
+    -------
+    scmt: (n,)
+       updated stochastic state array
     """
 
     n = scmt.shape[0]

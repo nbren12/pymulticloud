@@ -23,7 +23,7 @@ logger = logging.getLogger(__file__)
 
 class MulticloudModel(object):
     L = 3
-    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd']
+    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
 
     @property
     def variable_idxs(self):
@@ -77,7 +77,7 @@ class MulticloudModel(object):
     def neq(self):
         return 2 * self.L + len(self.variables)
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500):
         variable_idxs = self.variable_idxs
 
         soln = np.zeros((self.neq, n))
@@ -162,13 +162,6 @@ def main(run_duration=100, dt_out=1.0, solver=None):
 
     TODO This file is too complicated needs to be refactored, and the IO needs
     to be rethought
-
-    Parameters
-    ----------
-    run_duration: float
-        length of simulation from start_time
-    dt_out: float
-        output interval
     """
     t_start = 0.0
 
