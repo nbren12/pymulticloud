@@ -327,8 +327,8 @@ contains
 
 
     DO i=1,n
-       U1(I)= U1(I)*DEXP( - UD*DT)! exact solution for U1
-       U2(I)= U2(I)*DEXP( - UD*DT)! exact solution for U2
+       ! U1(I)= U1(I)*DEXP( - UD*DT)! exact solution for U1
+       ! U2(I)= U2(I)*DEXP( - UD*DT)! exact solution for U2
 
 
        u_temp(1) = u1(i)

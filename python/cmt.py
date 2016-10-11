@@ -30,7 +30,7 @@ c = L / T
 alpha_bar = 15.34
 
 tscale = T
-qscale = alpha_bar
+qscale = alpha_bar/T
 
 # Useful global variables
 hsbar = 0
@@ -85,8 +85,8 @@ def calc_du(u):
         dulow[i] = uzst-uzz[0]
 
 
-        imid = np.abs(uzz[16:]-uzst).argmax()
-        dumid[i] = uzz[imid]-uzz[iopt]
+        imid = np.abs(uzz[16:]-uzst).argmax() + 16
+        dumid[i] = uzz[imid]-uzst
 
     return dulow, dumid
 
@@ -155,8 +155,8 @@ def rhs(u, scmt, qd, dulow, dumid, u_relax):
 
     d1 = 1 / (3 * day)
     d2 = 1 / (3 * day)
-    tauf = 1.25 * day
-    qdref = 10 / day
+    tauf = 2.00 * day
+    qdref = 10/day
 
     du  = np.empty_like(u)
 
@@ -172,10 +172,16 @@ def rhs(u, scmt, qd, dulow, dumid, u_relax):
         elif scmt[i] == 2:
             if dumid[i] * dulow[i] < 0:
                 kappa = -(qd[i]/ qdref)**2 * dumid[i] / tauf
+            else:
+                kappa = 0
 
-                du[0,i] = kappa
-                du[1,i] = 0.0
-                du[2,i] = -kappa
+            for j in range(u.shape[0]):
+                du[j,i] = -d2 * (u[j,i] - u_relax[j,i])
+
+            # du[0,i] = 0.0
+            du[1,i] = kappa
+            # du[2,i] = 0.0
+                # du[3,i] = -kappa
 
     return du
 

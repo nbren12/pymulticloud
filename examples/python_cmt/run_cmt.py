@@ -27,6 +27,7 @@ class CmtSolver(object):
         self._multicloud_model = MulticloudModel()
         self._multicloud_model.variables.append('scmt')
 
+        self._du = [0,0,0]
 
     def onestep(self, soln, time, dt, *args, **kwargs):
 
@@ -45,14 +46,19 @@ class CmtSolver(object):
         hd  = soln[variable_idxs['hd']] * cmt.qscale
         hc  = soln[variable_idxs['hc']] * cmt.qscale
         lmd = soln[variable_idxs['lmd']]
-        lmd = 0 * lmd + .4
+        lmd = 0 * lmd + .2
         scmt = soln[variable_idxs['scmt']].astype(np.int32)
 
         rates, dulow, dumid = cmt.transition_rates_array(u, hd, hc, lmd)
         scmt = cmt.stochastic_integrate_array(scmt, rates, cmt.T*time, cmt.T*(time + dt))
 
-        du = cmt.rhs(u, scmt, dulow, dumid, hd, u*0)
-        u += du * dt * cmt.T
+
+        # adams bashforth second order
+        if np.any(u**2 > 100**2):
+            i = (u**2 > 100**2).nonzero()
+            raise ValueError("%i "%scmt[i])
+        u += dt * cmt.T * (23/12 * self._du[0] - 4/3 * self._du[1] + 5/12*self._du[2])
+
 
         soln[variable_idxs['u']] = u /cmt.c
         soln[variable_idxs['scmt']] = scmt.astype(np.float64)
@@ -66,10 +72,15 @@ if __name__ == '__main__':
     from docopt import docopt
     args = docopt(__doc__)
 
+    restart_file = None
     if args['--restart']:
         shutil.copy(args['<restart_file>'], 'restart.pkl')
+        restart_file = args['<restart_file>']
 
     solver = CmtSolver()
     main(run_duration=float(args['--duration']),
          dt_out=float(args['--output_interval']),
+         restart_file = restart_file, 
          solver=solver)
+
+

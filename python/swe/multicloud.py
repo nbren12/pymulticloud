@@ -55,6 +55,10 @@ class MulticloudModel(object):
         from functools import partial
         variable_idxs = self.variable_idxs
 
+        # if not self.validate_soln(soln[:,2:-2]):
+        #     import pdb; pdb.set_trace()
+        #     raise ValueError("NAN in solution array")
+
         # hyperbolic terms
         periodic_bc(soln)
         f_partial = partial(self._f, nonlinear=nonlinear)
@@ -136,6 +140,8 @@ class MulticloudModel(object):
         arr['time'] = t
 
         return arr
+    def validate_soln(self, soln):
+        return not np.any(np.isnan(soln)) 
 
 
 def unghosted(q):
@@ -157,7 +163,7 @@ def load_restart_file(name):
     return arr
 
 
-def main(run_duration=100, dt_out=1.0, solver=None):
+def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None):
     """Runs multicloud model
 
     TODO This file is too complicated needs to be refactored, and the IO needs
@@ -172,8 +178,8 @@ def main(run_duration=100, dt_out=1.0, solver=None):
 
     soln, dx = solver.init_mc()
 
-    if os.path.exists('restart.pkl'):
-        soln, t_start, dx = load_restart_file("restart.pkl")
+    if restart_file is not None:
+        soln, t_start, dx = load_restart_file(restart_file)
         logger.info("Loading restart file at t={0}".format(t_start))
     elif os.path.exists('ic.npz'):
         soln = solver.init_mc_from_file("ic.npz")
