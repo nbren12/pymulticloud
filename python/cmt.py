@@ -118,7 +118,7 @@ def transition_rates(dulow, qd, qc, lmd, T):
     beta_u = 1 / (10.0)
     qcref = 10 / day
     qdref = 10 / day
-    duref = 20
+    duref = 10
     dumin = 5
 
 
@@ -151,11 +151,38 @@ def transition_rates_array(u, qd, qc, lmd):
     return rates, dulow, dumid
 
 @jit(nopython=True)
+def update_cmt(u, scmt, qd, dulow, dumid, dt):
+
+    d1 = 1 / (3 * day)
+    d2 = 1 / (3 * day)
+    tauf = 1.25 * day
+    qdref = 10/day
+
+    for i in range(scmt.shape[0]):
+
+        if scmt[i] == 0:
+            for j in range(u.shape[0]):
+                u[j,i] = exp(-d1 *dt)*u[j,i]
+        elif scmt[i] == 1:
+            for j in range(u.shape[0]):
+                u[j,i] = exp(-d2 *dt)*u[j,i]
+
+        elif scmt[i] == 2:
+            if dumid[i] * dulow[i] < 0:
+                kappa = -(qd[i]/ qdref)**2 / tauf
+            else:
+                kappa = 0
+
+            u[1,i] = exp(kappa * dt)*u[1,i]
+
+    return u
+
+@jit(nopython=True)
 def rhs(u, scmt, qd, dulow, dumid, u_relax):
 
     d1 = 1 / (3 * day)
     d2 = 1 / (3 * day)
-    tauf = 2.00 * day
+    tauf = 1.25 * day
     qdref = 10/day
 
     du  = np.empty_like(u)
@@ -175,13 +202,9 @@ def rhs(u, scmt, qd, dulow, dumid, u_relax):
             else:
                 kappa = 0
 
-            for j in range(u.shape[0]):
-                du[j,i] = -d2 * (u[j,i] - u_relax[j,i])
-
-            # du[0,i] = 0.0
+            du[0,i] = 0.0
             du[1,i] = kappa
-            # du[2,i] = 0.0
-                # du[3,i] = -kappa
+            du[2,i] = 0.0
 
     return du
 

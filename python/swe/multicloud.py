@@ -50,14 +50,13 @@ class MulticloudModel(object):
 
         return fq
 
-    def onestep(self, soln, time, dt, dx, nonlinear=1.0):
+    def onestep(self, soln, time, dt, dx, nonlinear=0.0):
         """Perform a single time step of the multicloud model"""
         from functools import partial
         variable_idxs = self.variable_idxs
 
-        # if not self.validate_soln(soln[:,2:-2]):
-        #     import pdb; pdb.set_trace()
-        #     raise ValueError("NAN in solution array")
+        if not self.validate_soln(soln[:,2:-2]):
+            raise ValueError("NAN in solution array")
 
         # hyperbolic terms
         periodic_bc(soln)
@@ -81,7 +80,7 @@ class MulticloudModel(object):
     def neq(self):
         return 2 * self.L + len(self.variables)
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500):
         variable_idxs = self.variable_idxs
 
         soln = np.zeros((self.neq, n))
@@ -163,7 +162,7 @@ def load_restart_file(name):
     return arr
 
 
-def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None):
+def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     """Runs multicloud model
 
     TODO This file is too complicated needs to be refactored, and the IO needs
@@ -184,7 +183,7 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None):
     elif os.path.exists('ic.npz'):
         soln = solver.init_mc_from_file("ic.npz")
 
-    dt = dx * .1
+    dt = dx * cfl
     t_end = t_start + run_duration
 
     t_out = t_start + dt_out

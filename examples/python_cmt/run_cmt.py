@@ -2,10 +2,11 @@
 """Run python multicloud model
 
 Usage:
-    run_mc.py [-r <restart_file>] [--duration=<time>] [--output_interval=<interval>]
+    run_mc.py [-r <restart_file>] [--duration=<time>] [--output_interval=<interval>] [--cfl=<float>]
 
 Options:
     -r --restart                        use restart file to initialize run
+    --cfl=<float>                       cfl [default: .1]
     -d <time> --duration=<time>         run duration [default: 100]
     -i <time> --output_interval=<time>  run duration [default: .25]
 """
@@ -53,12 +54,7 @@ class CmtSolver(object):
         scmt = cmt.stochastic_integrate_array(scmt, rates, cmt.T*time, cmt.T*(time + dt))
 
 
-        # adams bashforth second order
-        if np.any(u**2 > 100**2):
-            i = (u**2 > 100**2).nonzero()
-            raise ValueError("%i "%scmt[i])
-        u += dt * cmt.T * (23/12 * self._du[0] - 4/3 * self._du[1] + 5/12*self._du[2])
-
+        u = cmt.update_cmt(u, scmt, hd, dulow, dumid, dt*cmt.T)
 
         soln[variable_idxs['u']] = u /cmt.c
         soln[variable_idxs['scmt']] = scmt.astype(np.float64)
@@ -81,6 +77,7 @@ if __name__ == '__main__':
     main(run_duration=float(args['--duration']),
          dt_out=float(args['--output_interval']),
          restart_file = restart_file, 
+         cfl=float(args['--cfl']),
          solver=solver)
 
 
