@@ -1,5 +1,5 @@
 subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
-     dx, time, tebst, hc ,hd) bind(c)
+     dx, time, tebst, hc ,hd, moiststab) bind(c)
   use, intrinsic :: iso_c_binding
   use util
   use param_mod
@@ -17,7 +17,7 @@ subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
        fc(n), fd(n), fs(n)
 
   real(c_double), intent(in) :: dt, dx, time
-  real(c_double), intent(out) :: hc(n), hd(n)
+  real(c_double), intent(out) :: hc(n), hd(n), moiststab(n)
 
   real(8) :: hds(n)
 
@@ -33,7 +33,7 @@ subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
   CALL updatehcds(fc,fd,fs,u1, u2, t1,t2,teb,q,hds,hc,hd  &
        ,n, dx, dt*t/(hour) )
   CALL range_kuttas(u1,u2,t1,t2,teb,q,hs,hc,hd,n,&
-       dt,tebst,time,hds)
+       dt,tebst,time,hds, moiststab)
   first_call = .false.
 end subroutine multicloud_wrapper
 

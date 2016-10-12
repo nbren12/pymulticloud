@@ -289,7 +289,7 @@ contains
 
 
   SUBROUTINE range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,  &
-       n,dt, thteb_st,timel,hds)
+       n,dt, thteb_st,timel,hds, moiststab)
     use param_mod
     IMPLICIT NONE
 
@@ -308,6 +308,7 @@ contains
     REAL*8, INTENT(IN)                       :: thteb_st(n)
     REAL*8, INTENT(IN)                       :: timel
     REAL*8, INTENT(IN OUT)                   :: hds(n)
+    REAL*8, INTENT(OUT)                      :: moiststab(n)
     INTEGER :: i
 
     REAL*8 ftht1,ftht2,fthteb,fq,fhs,fhc,two_sqrt2,xgtemp
@@ -355,6 +356,8 @@ contains
             - (two_sqrt2/pi)*(theta1(i) + alpha3*theta2(i))- q(i)
        tht_eb_tht_el = theta_eb_elbar + theta_eb(i)  &
             - (two_sqrt2/pi)*(theta1(i) + 2.d0*theta2(i))- 2.d0*q(i)
+
+       moiststab(i) = tht_eb_tht_em
 
        ec=deltac*m0*tht_eb_tht_el*(two_sqrt2/pi)*(hc(i)/qr01);
        ec=deltac1*ec

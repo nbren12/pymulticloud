@@ -62,7 +62,7 @@ void multicloud_wrapper(double *, double *, double *, double *,
                         double *, double *, double *, double *,
                         double *, double *,
                         int * n , double * dt, double*  dx, double*  time, double *,
-                        double *, double *);
+                        double *, double *, double *);
 
 void multicloud_eq(double * fceq, double * fdeq, double * fseq);
 
@@ -73,7 +73,7 @@ _mc_library = _open_library()
 
 
 def multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time,
-                   tebst, hc, hd):
+                   tebst, hc, hd, moiststab):
     """Wrapper for multicloud model right hand side"""
     n = fc.shape[0]
     _mc_library.multicloud_wrapper(
@@ -82,7 +82,7 @@ def multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time,
         _as_pointer(q), _as_pointer(hs), ffi.new("int *", n),
         ffi.new("double *", dt), ffi.new("double *", dx),
         ffi.new("double *", time), _as_pointer(tebst),
-        _as_pointer(hc), _as_pointer(hd))
+        _as_pointer(hc), _as_pointer(hd), _as_pointer(moiststab))
 
 
 def equilibrium_fractions():
@@ -134,8 +134,8 @@ def test_multicloud_rhs():
     teb = np.zeros(n)
     q = np.zeros(n)
     hs = np.zeros(n)
-
-    multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time, tebst)
+    moiststab = np.zeros(n)
+    multicloud_rhs(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, dt, dx, time, tebst, moiststab)
 
 
 if __name__ == '__main__':

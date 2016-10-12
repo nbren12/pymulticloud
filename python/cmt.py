@@ -113,8 +113,7 @@ def heaviside(x):
 def transition_rates(dulow, qd, qc, lmd, T):
     """Transition rates for stochastic CMT process"""
     taur = 8 * hour
-    beta_lmd = 1
-    beta_q = 1 / (8 / day)
+    beta_q = 1 / (10 / day)
     beta_u = 1 / (10.0)
     qcref = 20 / day
     qdref = 20 / day
@@ -124,12 +123,9 @@ def transition_rates(dulow, qd, qc, lmd, T):
 
     dulow = abs(dulow)
 
-    T[0, 1] = heaviside(qd) * exp(beta_lmd * (1 - lmd) + beta_q * qd)
-    T[0, 1] = heaviside(qd) * exp(beta_q * qd)
+    T[0, 1] = heaviside(qd) * exp(- lmd + beta_q * qd)
     T[1, 2] = heaviside(dulow - dumin) * exp(beta_u * dulow + beta_q * qc)
-
-    lmd = 1.0
-    T[1, 0] = exp(beta_lmd * lmd + beta_q * (qdref - qd))
+    T[1, 0] = exp(lmd + beta_q * (qdref - qd))
     T[2, 0] = T[1, 0]
     T[2, 1] = exp(beta_u * (duref - dulow) + beta_q * (qcref - qc))
 
@@ -355,7 +351,10 @@ def stochastic_cmt_diagnostic_run(datadir):
     t_data = data['time'][:] * T
     qd_data = data['hd'] * alpha_bar / T
     qc_data = data['hc'] * alpha_bar / T
-    lmd_data = .9 * np.ones_like(qd_data)
+    lmd_data = (data['lmd']*alpha_bar - 11)/3
+
+
+
     u_relax_data = data['u'] * c
 
 
@@ -409,15 +408,20 @@ class CmtSolver(object):
         u  = soln['u'] * c
         hd  = soln['hd'] * qscale
         hc  = soln['hc'] * qscale
-        lmd = soln['lmd']
-        lmd = 0 * lmd + .8
+        lmd = (soln['lmd'] * alpha_bar - 11)/3
         scmt = soln['scmt'].astype(np.int32)
 
         rates, dulow, dumid = transition_rates_array(u, hd, hc, lmd)
         scmt = stochastic_integrate_array(scmt, rates, T*time, T*(time + dt))
 
+        uold = u.copy()
 
         u = update_cmt(u, scmt, hd, dulow, dumid, dt*T)
+
+        # diagnostic
+        fcmt = (u-uold/dt)
+        soln['kcmt'] = fcmt * u
+
 
         soln['u'] = u/c
         soln['scmt'] = scmt.astype(np.float64)

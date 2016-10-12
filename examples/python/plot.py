@@ -28,3 +28,9 @@ plt.figure()
 plt.plot(np.sqrt(data['u'][:,:,2:-2]**2).mean(axis=0).T)
 plt.legend([0,1,2])
 plt.savefig("urms.png")
+
+
+plt.figure()
+plt.pcolormesh(data['lmd'])
+plt.colorbar()
+plt.savefig("lmd.png")
