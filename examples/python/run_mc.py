@@ -18,7 +18,7 @@ sys.path.insert(0, "../../")
 # import fortran.multicloud
 from python.swe.multicloud import main
 
-if __n)ame__ == '__main__':
+if __name__ == '__main__':
     from docopt import docopt
     args = docopt(__doc__)
     import logging
