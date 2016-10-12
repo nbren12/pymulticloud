@@ -31,7 +31,7 @@ subroutine multicloud_wrapper(fc, fd, fs, u1, u2, t1, t2, teb, q, hs, n, dt,&
   end if
 
   CALL updatehcds(fc,fd,fs,u1, u2, t1,t2,teb,q,hds,hc,hd  &
-       ,n, dx, 2.d0*dt*t/(hour) )
+       ,n, dx, dt*t/(hour) )
   CALL range_kuttas(u1,u2,t1,t2,teb,q,hs,hc,hd,n,&
        dt,tebst,time,hds)
   first_call = .false.
