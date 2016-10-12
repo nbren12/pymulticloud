@@ -15,4 +15,4 @@ fig, axs= plt.subplots(1,3)
 for i in range(3):
     axs[i].pcolormesh(data['u'][:,i,:], cmap='Greys')
     axs[i].set_title("CMT={0}".format(i))
-    plt.savefig('scmt.png')
+    plt.savefig('u.png')
