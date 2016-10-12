@@ -21,6 +21,8 @@ from python.swe.multicloud import main
 if __name__ == '__main__':
     from docopt import docopt
     args = docopt(__doc__)
+    import logging
+    logging.basicConfig(level=logging.INFO)
 
 
     restart_file = None

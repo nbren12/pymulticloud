@@ -9,8 +9,6 @@ from python.read import read_data
 
 data = read_data("./data")
 
-from IPython import embed; embed()
-
 fig, axs= plt.subplots(1,3)
 
 for i in range(3):

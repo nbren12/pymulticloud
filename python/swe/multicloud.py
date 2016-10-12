@@ -14,16 +14,49 @@ import numpy as np
 # probably a conflict with numba.
 import fortran.multicloud as mc
 
-from .two_mode_swe import f as f2m
 from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
 logger = logging.getLogger(__file__)
 
-
-class MulticloudModel(object):
+class Soln(object):
     L = 3
     variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
+
+    def __init__(self, n):
+        "docstring"
+        self._data = np.zeros((self.neq, n))
+
+    def __getitem__(self, name):
+        try:
+            return self._data[self.variable_idxs[name]]
+        except:
+            return self._data[name]
+
+    def __setitem__(self, name, val):
+        try:
+            self._data[self.variable_idxs[name]] = val
+        except:
+            self._data[name] = val
+
+    # def __getattr__(self, name):
+    #     return getattr(self._data, name)
+
+    def comm(self):
+        periodic_bc(self._data)
+
+
+    @property
+    def q(self):
+        return self._data[:2*self.L+1,:]
+
+    @q.setter
+    def q(self, val):
+        self._data[:2*self.L+1,:] = val
+
+    @property
+    def neq(self):
+        return 2 * self.L + len(self.variables)
 
     @property
     def variable_idxs(self):
@@ -33,66 +66,83 @@ class MulticloudModel(object):
 
         return variable_idxs
 
-    def _f(self, q, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, nonlinear=0.0):
-        """Flux function for multicloud model"""
+    def record_array_soln(self,t):
+        """Create record array for solution"""
+        variables = self.variables
         variable_idxs = self.variable_idxs
 
-        u = q[variable_idxs['u'], ...]
-        T = q[variable_idxs['t'], ...]
-        moist = q[variable_idxs['q'], ...]
+        n = self._data.shape[-1]
 
+        variables_dtype = [(k, np.float64, (n,)) for k in variables] \
+                        + [(k, np.float64, (self.L, n)) for k in ['u', 't']]
+        mydt = np.dtype([('time', np.float64)] + variables_dtype)
+        arr = np.zeros(1, dtype=mydt)
+
+        for k, v in variable_idxs.items():
+            arr[k] = self[v]
+
+        arr['time'] = t
+
+        return arr
+
+def f(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
+    """Conservative flux according to stechmann and majda"""
+    u = q[:2*L:2]
+    T = q[1:2*L:2]
+    moist = q[L*2]
+
+    if fq is None:
         fq = np.empty_like(q)
-        f2m(q, fq=fq, nonlin=nonlinear)
 
-        # moisture equation
-        fq[variable_idxs['q'], ...] = q_tld * (u[1] + lmd_tld * u[2]) \
-                                    + moist * (u[1] + alpha_tld * u[2])
+    fq[0] = 0.0
+    fq[1] = 0.0
+    fq[2] = - T[1]
+    fq[3] = - u[1]
+    fq[4] = -T[2]
+    fq[5] = -u[2] / 4
+    fq[6] = q_tld * (u[1] + lmd_tld * u[2]) \
+                                  + moist * (u[1] + alpha_tld * u[2])
 
-        return fq
+    return fq
+
+class MulticloudModel(object):
 
     def onestep(self, soln, time, dt, dx, nonlinear=0.0):
         """Perform a single time step of the multicloud model"""
         from functools import partial
-        variable_idxs = self.variable_idxs
 
         if not self.validate_soln(soln[:,2:-2]):
             raise ValueError("NAN in solution array")
 
         # hyperbolic terms
-        periodic_bc(soln)
-        f_partial = partial(self._f, nonlinear=nonlinear)
-        soln[:2 * self.L + 1, ...] = central_scheme(
-            f_partial, soln[:2 * self.L + 1, ...], dx, dt)
+        soln.comm()
+        f_partial = partial(f)
+        soln.q = central_scheme(f_partial, soln.q, dx, dt)
 
         # multicloud model step
         mc.multicloud_rhs(
-            soln[variable_idxs['fc']], soln[variable_idxs['fd']],
-            soln[variable_idxs['fs']], soln[variable_idxs['u']][1],
-            soln[variable_idxs['u']][2], soln[variable_idxs['t']][1],
-            soln[variable_idxs['t']][2], soln[variable_idxs['teb']],
-            soln[variable_idxs['q']], soln[variable_idxs['hs']], dt, dx, time,
-            soln[variable_idxs['tebst']], soln[variable_idxs['hc']],
-            soln[variable_idxs['hd']])
+            soln['fc'], soln['fd'],
+            soln['fs'], soln['u'][1],
+            soln['u'][2], soln['t'][1],
+            soln['t'][2], soln['teb'],
+            soln['q'], soln['hs'], dt, dx, time,
+            soln['tebst'], soln['hc'],
+            soln['hd'])
 
         return soln
 
-    @property
-    def neq(self):
-        return 2 * self.L + len(self.variables)
-
     def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500):
-        variable_idxs = self.variable_idxs
 
-        soln = np.zeros((self.neq, n))
+        soln = Soln(n)
 
         fceq, fdeq, fseq = mc.equilibrium_fractions()
 
-        soln[variable_idxs['fc']] = fceq
-        soln[variable_idxs['fd']] = fdeq
-        soln[variable_idxs['fs']] = fseq
+        soln['fc'] = fceq
+        soln['fd'] = fdeq
+        soln['fs'] = fseq
 
         # initialize temperature field with small random perturbation
-        soln[variable_idxs['t'], ...][0] = np.random.randn(n) * .01
+        soln['t'][0] = np.random.randn(n) * .01
 
         # initialize teb
         x = np.arange(n) * dx
@@ -103,42 +153,13 @@ class MulticloudModel(object):
         tebst[x >= domain_size / 2 + lsst / 2] = -asst
         tebst[x <= domain_size / 2 - lsst / 2] = -asst
 
-        soln[variable_idxs['tebst']] = tebst
+        soln['tebst'] = tebst
 
         return soln, dx
 
-    def init_mc_from_file(self, fn):
-
-        variable_idxs = self.variable_idxs
-        neq = self.neq
-        icdata = np.load(fn)['arr_0'][-1]
-        n = icdata['teb'].shape[0] + 4
-        soln = np.zeros((neq, n))
-
-        for key in variable_idxs:
-            soln[variable_idxs[key]][..., 2:-2] = icdata[key]
-
-        return soln
-
     def record_array_soln(self, soln, t):
-        """Create record array for solution"""
-        variables = self.variables
-        variable_idxs = self.variable_idxs
+        return soln.record_array_soln(t)
 
-        soln = unghosted(soln)
-        n = soln.shape[-1]
-
-        variables_dtype = [(k, np.float64, (n,)) for k in variables] \
-                        + [(k, np.float64, (self.L, n)) for k in ['u', 't']]
-        mydt = np.dtype([('time', np.float64)] + variables_dtype)
-        arr = np.zeros(1, dtype=mydt)
-
-        for k, v in variable_idxs.items():
-            arr[k] = soln[v]
-
-        arr['time'] = t
-
-        return arr
     def validate_soln(self, soln):
         return not np.any(np.isnan(soln)) 
 
