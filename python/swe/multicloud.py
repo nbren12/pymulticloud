@@ -132,7 +132,7 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500, **kwargs):
+    def init_mc(self, n=500, dx=80 / 1500, asst=0.0, lsst=10000 / 1500, **kwargs):
 
         soln = Soln(n, **kwargs)
 

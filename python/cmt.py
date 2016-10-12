@@ -114,10 +114,10 @@ def transition_rates(dulow, qd, qc, lmd, T):
     """Transition rates for stochastic CMT process"""
     taur = 8 * hour
     beta_lmd = 1
-    beta_q = 1 / (10 / day)
+    beta_q = 1 / (8 / day)
     beta_u = 1 / (10.0)
-    qcref = 10 / day
-    qdref = 10 / day
+    qcref = 20 / day
+    qdref = 20 / day
     duref = 10
     dumin = 5
 
@@ -125,8 +125,10 @@ def transition_rates(dulow, qd, qc, lmd, T):
     dulow = abs(dulow)
 
     T[0, 1] = heaviside(qd) * exp(beta_lmd * (1 - lmd) + beta_q * qd)
+    T[0, 1] = heaviside(qd) * exp(beta_q * qd)
     T[1, 2] = heaviside(dulow - dumin) * exp(beta_u * dulow + beta_q * qc)
 
+    lmd = 1.0
     T[1, 0] = exp(beta_lmd * lmd + beta_q * (qdref - qd))
     T[2, 0] = T[1, 0]
     T[2, 1] = exp(beta_u * (duref - dulow) + beta_q * (qcref - qc))
@@ -153,60 +155,28 @@ def transition_rates_array(u, qd, qc, lmd):
 @jit(nopython=True)
 def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
-    d1 = 1 / (3 * day)
-    d2 = 1 / (3 * day)
-    tauf = 1.25 * day
+    d1 = 1 / (10 * day)
+    d2 = 1 / (10 * day)
+    tauf = 5 * day
     qdref = 10/day
 
-    for i in range(scmt.shape[0]):
+    for j in range(u.shape[0]):
+        for i in range(u.shape[1]):
 
-        if scmt[i] == 0:
-            for j in range(u.shape[0]):
+            if scmt[i] == 0:
                 u[j,i] = exp(-d1 *dt)*u[j,i]
-        elif scmt[i] == 1:
-            for j in range(u.shape[0]):
+            elif scmt[i] == 1:
                 u[j,i] = exp(-d2 *dt)*u[j,i]
 
-        elif scmt[i] == 2:
-            if dumid[i] * dulow[i] < 0:
-                kappa = (qd[i]/ qdref)**2 / tauf
-            else:
-                kappa = 0
+            elif scmt[i] == 2:
+                if dumid[i] * dulow[i] < 0:
+                    kappa = -(qd[i]/ qdref)**2 *dumid[i] / tauf
+                else:
+                    kappa = 0
 
-            u[1,i] = exp(kappa * dt)*u[1,i]
+                u[2,i] = u[2,i] + kappa * dt
 
     return u
-
-@jit(nopython=True)
-def rhs(u, scmt, qd, dulow, dumid, u_relax):
-
-    d1 = 1 / (3 * day)
-    d2 = 1 / (3 * day)
-    tauf = 1.25 * day
-    qdref = 10/day
-
-    du  = np.empty_like(u)
-
-    for i in range(scmt.shape[0]):
-
-        if scmt[i] == 0:
-            for j in range(u.shape[0]):
-                du[j,i] = -d1 * (u[j,i] - u_relax[j,i])
-        elif scmt[i] == 1:
-            for j in range(u.shape[0]):
-                du[j,i] = -d2 * (u[j,i] - u_relax[j,i])
-
-        elif scmt[i] == 2:
-            if dumid[i] * dulow[i] < 0:
-                kappa = -(qd[i]/ qdref)**2 * dumid[i] / tauf
-            else:
-                kappa = 0
-
-            du[0,i] = 0.0
-            du[1,i] = kappa
-            du[2,i] = 0.0
-
-    return du
 
 
 def stochastic_integrate_array(scmt, rates, a, b):
@@ -385,7 +355,7 @@ def stochastic_cmt_diagnostic_run(datadir):
     t_data = data['time'][:] * T
     qd_data = data['hd'] * alpha_bar / T
     qc_data = data['hc'] * alpha_bar / T
-    lmd_data = .4 * np.ones_like(qd_data)
+    lmd_data = .9 * np.ones_like(qd_data)
     u_relax_data = data['u'] * c
 
 
@@ -426,7 +396,8 @@ class CmtSolver(object):
     def onestep(self, soln, time, dt, *args, **kwargs):
 
         soln = self._multicloud_model.onestep(soln, time, dt, *args, **kwargs)
-        soln = self._cmt_step(soln, time, dt)
+        if time > 100:
+            soln = self._cmt_step(soln, time, dt)
 
         return soln
 
@@ -439,7 +410,7 @@ class CmtSolver(object):
         hd  = soln['hd'] * qscale
         hc  = soln['hc'] * qscale
         lmd = soln['lmd']
-        lmd = 0 * lmd + .2
+        lmd = 0 * lmd + .8
         scmt = soln['scmt'].astype(np.int32)
 
         rates, dulow, dumid = transition_rates_array(u, hd, hc, lmd)
@@ -448,7 +419,7 @@ class CmtSolver(object):
 
         u = update_cmt(u, scmt, hd, dulow, dumid, dt*T)
 
-        soln['u'] = u /c
+        soln['u'] = u/c
         soln['scmt'] = scmt.astype(np.float64)
 
         return soln
@@ -462,5 +433,7 @@ def main():
     np.savez("scmt.npz", t=t, scmt=scmt)
 
 if __name__ == '__main__':
+    import logging
+    logging.basicConfig(level=logging.INFO)
     main()
 
