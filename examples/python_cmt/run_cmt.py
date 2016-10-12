@@ -19,56 +19,10 @@ sys.path.insert(0, "../../")
 
 # this needs to be imported before python. not sure why
 # import fortran.multicloud
-from python.swe.multicloud import MulticloudModel, main
-from python import cmt
-
-class CmtSolver(object):
-    def __init__(self):
-        "docstring"
-        self._multicloud_model = MulticloudModel()
-
-        self._du = [0,0,0]
+from python.swe.multicloud import  main
+from python.cmt import CmtSolver
 
 
-    def init_mc(self, *args, **kwargs):
-
-        soln, dx = self._multicloud_model.init_mc(*args, extra_vars=['scmt'],
-                                                  **kwargs)
-
-        return soln, dx
-
-    def onestep(self, soln, time, dt, *args, **kwargs):
-
-        soln = self._multicloud_model.onestep(soln, time, dt, *args, **kwargs)
-        soln = self._cmt_step(soln, time, dt)
-
-        return soln
-
-    def _cmt_step(self, soln, time, dt):
-        """Step of cmt model"""
-
-
-
-        u  = soln['u'] * cmt.c
-        hd  = soln['hd'] * cmt.qscale
-        hc  = soln['hc'] * cmt.qscale
-        lmd = soln['lmd']
-        lmd = 0 * lmd + .2
-        scmt = soln['scmt'].astype(np.int32)
-
-        rates, dulow, dumid = cmt.transition_rates_array(u, hd, hc, lmd)
-        scmt = cmt.stochastic_integrate_array(scmt, rates, cmt.T*time, cmt.T*(time + dt))
-
-
-        u = cmt.update_cmt(u, scmt, hd, dulow, dumid, dt*cmt.T)
-
-        soln['u'] = u /cmt.c
-        soln['scmt'] = scmt.astype(np.float64)
-
-        return soln
-
-    def __getattr__(self, name):
-        return self._multicloud_model.__getattribute__(name)
 
 if __name__ == '__main__':
     from docopt import docopt

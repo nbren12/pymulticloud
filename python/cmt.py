@@ -407,6 +407,56 @@ def stochastic_cmt_diagnostic_run(datadir):
 
     return tout, output_cmt
 
+class CmtSolver(object):
+    def __init__(self):
+        "docstring"
+        from .swe.multicloud import MulticloudModel
+        self._multicloud_model = MulticloudModel()
+
+        self._du = [0,0,0]
+
+
+    def init_mc(self, *args, **kwargs):
+
+        soln, dx = self._multicloud_model.init_mc(*args, extra_vars=['scmt'],
+                                                  **kwargs)
+
+        return soln, dx
+
+    def onestep(self, soln, time, dt, *args, **kwargs):
+
+        soln = self._multicloud_model.onestep(soln, time, dt, *args, **kwargs)
+        soln = self._cmt_step(soln, time, dt)
+
+        return soln
+
+    def _cmt_step(self, soln, time, dt):
+        """Step of cmt model"""
+
+
+
+        u  = soln['u'] * c
+        hd  = soln['hd'] * qscale
+        hc  = soln['hc'] * qscale
+        lmd = soln['lmd']
+        lmd = 0 * lmd + .2
+        scmt = soln['scmt'].astype(np.int32)
+
+        rates, dulow, dumid = transition_rates_array(u, hd, hc, lmd)
+        scmt = stochastic_integrate_array(scmt, rates, T*time, T*(time + dt))
+
+
+        u = update_cmt(u, scmt, hd, dulow, dumid, dt*T)
+
+        soln['u'] = u /c
+        soln['scmt'] = scmt.astype(np.float64)
+
+        return soln
+
+    def __getattr__(self, name):
+        return self._multicloud_model.__getattribute__(name)
+
+
 def main():
     t, scmt = stochastic_cmt_diagnostic_run("data")
     np.savez("scmt.npz", t=t, scmt=scmt)
