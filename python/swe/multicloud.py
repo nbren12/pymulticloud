@@ -23,8 +23,9 @@ class Soln(object):
     L = 3
     variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
 
-    def __init__(self, n):
+    def __init__(self, n, extra_vars=[]):
         "docstring"
+        self.variables += list(extra_vars)
         self._data = np.zeros((self.neq, n))
 
     def __getitem__(self, name):
@@ -131,9 +132,9 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.0, lsst=10000 / 1500, **kwargs):
 
-        soln = Soln(n)
+        soln = Soln(n, **kwargs)
 
         fceq, fdeq, fseq = mc.equilibrium_fractions()
 

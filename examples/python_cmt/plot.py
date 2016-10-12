@@ -10,9 +10,10 @@ from python.read import read_data
 
 data = read_data("./data")
 
+
 fig, axs= plt.subplots(1,3)
 
 for i in range(3):
-    axs[i].pcolormesh(data['u'][:,i,:], cmap='Greys')
+    axs[i].pcolormesh(data['scmt']==i, cmap='Greys')
     axs[i].set_title("CMT={0}".format(i))
     plt.savefig('scmt.png')

@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 """Run python multicloud model
 
 Usage:
@@ -26,9 +26,16 @@ class CmtSolver(object):
     def __init__(self):
         "docstring"
         self._multicloud_model = MulticloudModel()
-        self._multicloud_model.variables.append('scmt')
 
         self._du = [0,0,0]
+
+
+    def init_mc(self, *args, **kwargs):
+
+        soln, dx = self._multicloud_model.init_mc(*args, extra_vars=['scmt'],
+                                                  **kwargs)
+
+        return soln, dx
 
     def onestep(self, soln, time, dt, *args, **kwargs):
 
@@ -41,14 +48,13 @@ class CmtSolver(object):
         """Step of cmt model"""
 
 
-        variable_idxs = self._multicloud_model.variable_idxs
 
-        u  = soln[variable_idxs['u']] * cmt.c
-        hd  = soln[variable_idxs['hd']] * cmt.qscale
-        hc  = soln[variable_idxs['hc']] * cmt.qscale
-        lmd = soln[variable_idxs['lmd']]
+        u  = soln['u'] * cmt.c
+        hd  = soln['hd'] * cmt.qscale
+        hc  = soln['hc'] * cmt.qscale
+        lmd = soln['lmd']
         lmd = 0 * lmd + .2
-        scmt = soln[variable_idxs['scmt']].astype(np.int32)
+        scmt = soln['scmt'].astype(np.int32)
 
         rates, dulow, dumid = cmt.transition_rates_array(u, hd, hc, lmd)
         scmt = cmt.stochastic_integrate_array(scmt, rates, cmt.T*time, cmt.T*(time + dt))
@@ -56,8 +62,8 @@ class CmtSolver(object):
 
         u = cmt.update_cmt(u, scmt, hd, dulow, dumid, dt*cmt.T)
 
-        soln[variable_idxs['u']] = u /cmt.c
-        soln[variable_idxs['scmt']] = scmt.astype(np.float64)
+        soln['u'] = u /cmt.c
+        soln['scmt'] = scmt.astype(np.float64)
 
         return soln
 
@@ -67,6 +73,9 @@ class CmtSolver(object):
 if __name__ == '__main__':
     from docopt import docopt
     args = docopt(__doc__)
+    import logging
+    logging.basicConfig(level=logging.INFO)
+
 
     restart_file = None
     if args['--restart']:
