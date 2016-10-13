@@ -157,7 +157,7 @@ def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
     d1 = 1 / (10 * day)
     d2 = 1 / (10 * day)
-    tauf = 5 * day
+    tauf =  1.25*day
     qdref = 10/day
 
     for j in range(u.shape[0]):
