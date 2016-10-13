@@ -83,7 +83,7 @@ def calc_du(u):
     for i in range(uz.shape[1]):
         uzz = uz[:,i]
 
-        iopt = np.abs(uzz[2:14] - uzz[0]).argmax()
+        iopt = np.abs(uzz[2:14] - uzz[0]).argmax() + 2
 
         uzst = uzz[iopt]
         dulow[i] = uzst-uzz[0]
@@ -170,11 +170,11 @@ def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
             elif scmt[i] == 2:
                 if dumid[i] * dulow[i] < 0:
-                    kappa = -(qd[i]/ qdref)**2 *dumid[i] / tauf
+                    kappa = -np.tanh((qd[i]/ qdref)**2) *dumid[i] / tauf
                 else:
                     kappa = 0
 
-                u[2,i] = u[2,i] + kappa * dt
+                u[1,i] = u[1,i] + kappa * dt
 
     return u
 
