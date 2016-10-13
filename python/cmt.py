@@ -387,6 +387,7 @@ class CmtSolver(object):
         self._multicloud_model = MulticloudModel()
 
         self._du = [0,0,0]
+        self.diags['kcmt'] = np.zeros((3,))
 
     def init_mc(self, *args, **kwargs):
 
@@ -423,7 +424,9 @@ class CmtSolver(object):
 
         # diagnostic
         fcmt = (u-uold)/dt
-        self._kcmt = np.vstack([np.mean(fcmt[:,scmt==i] * u[:,scmt==i], axis=1) for i in range(3)])
+        self.diags['kcmt'] = np.hstack(np.sum(fcmt[:,scmt==i] * u[:,scmt==i]) for i in range(3))
+
+        self.diags['kcmt'][np.isnan(self.diags['kcmt'])] = 0.0
 
 
         soln['u'] = u/c
