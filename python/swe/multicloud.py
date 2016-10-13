@@ -5,6 +5,7 @@ This code uses the forcings and gillespie algorithm from the fortran code
 import itertools
 import sys
 import os
+import pickle
 import logging
 import uuid
 
@@ -22,7 +23,6 @@ logger = logging.getLogger(__file__)
 class Soln(object):
     L = 3
     variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
-    diags = {}
 
     def __init__(self, n, extra_vars=[]):
         "docstring"
@@ -108,6 +108,7 @@ def f(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
     return fq
 
 class MulticloudModel(object):
+    diags = {}
 
     def onestep(self, soln, time, dt, dx, nonlinear=0.0):
         """Perform a single time step of the multicloud model"""
@@ -216,6 +217,8 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     arr = solver.record_array_soln(soln, t_start)
     output = np.zeros(nbuf, dtype=arr.dtype)
 
+    diags = []
+
     # include initial data
     output[0] = arr
     i_out = 1
@@ -226,6 +229,8 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
         os.mkdir(datadir)
 
     for t, soln in steps(solver.onestep, soln, dt, (t_start, t_end), dx):
+
+        diags.append(solver.diags.copy())
 
         if t > t_out:
             logger.info("Storing output data at t={0}".format(t))
@@ -239,6 +244,9 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
 
     dump_output_file(t, output[:i_out], datadir)
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
+
+    with open("diags.pkl", "wb") as f:
+        pickle.dump(diags, f)
 
 
 def dump_output_file(t, output, datadir):

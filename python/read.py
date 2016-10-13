@@ -17,6 +17,12 @@ def read_data(datadir):
              for x in open(os.path.join(datadir, "datafiles.txt")).readlines()]
     return np.concatenate([np.load(os.path.join(datadir, fn))['arr_0']
                            for fn in files])
+def read_diags(name):
+    import pickle
+    with open(name, "rb") as f:
+        diags = pickle.load(f)
+
+    return {key:np.concatenate([d[key][None,...] for d in diags]) for key in diags[0]}
 
 def report_data(data):
     import matplotlib.pyplot as plt
