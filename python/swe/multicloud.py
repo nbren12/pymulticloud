@@ -21,7 +21,8 @@ logger = logging.getLogger(__file__)
 
 class Soln(object):
     L = 3
-    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd', 'moiststab']
+    variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
+    diags = {}
 
     def __init__(self, n, extra_vars=[]):
         "docstring"
@@ -128,7 +129,7 @@ class MulticloudModel(object):
             soln['t'][2], soln['teb'],
             soln['q'], soln['hs'], dt, dx, time,
             soln['tebst'], soln['hc'],
-            soln['hd'], soln['moiststab'])
+            soln['hd'], soln['lmd'])
 
         return soln
 

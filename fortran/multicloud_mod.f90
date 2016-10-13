@@ -357,7 +357,7 @@ contains
        tht_eb_tht_el = theta_eb_elbar + theta_eb(i)  &
             - (two_sqrt2/pi)*(theta1(i) + 2.d0*theta2(i))- 2.d0*q(i)
 
-       moiststab(i) = tht_eb_tht_em
+       moiststab(i) = -tht_eb_tht_em
 
        ec=deltac*m0*tht_eb_tht_el*(two_sqrt2/pi)*(hc(i)/qr01);
        ec=deltac1*ec

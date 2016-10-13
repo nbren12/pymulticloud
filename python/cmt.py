@@ -50,6 +50,10 @@ transform_mat[nzgrid][:,0] = 1.0
 
 
 
+def lambda_formula(lmd):
+
+    return (lmd * alpha_bar + 12) / 3
+
 def cos_series_val(z, u):
     z = np.array(z, dtype=np.float64)
     out = np.zeros_like(z)
@@ -351,7 +355,7 @@ def stochastic_cmt_diagnostic_run(datadir):
     t_data = data['time'][:] * T
     qd_data = data['hd'] * alpha_bar / T
     qc_data = data['hc'] * alpha_bar / T
-    lmd_data = (data['lmd']*alpha_bar - 11)/3
+    lmd_data = lambda_formula(data['lmd'])
 
 
 
@@ -384,7 +388,6 @@ class CmtSolver(object):
 
         self._du = [0,0,0]
 
-
     def init_mc(self, *args, **kwargs):
 
         soln, dx = self._multicloud_model.init_mc(*args, extra_vars=['scmt'],
@@ -408,7 +411,7 @@ class CmtSolver(object):
         u  = soln['u'] * c
         hd  = soln['hd'] * qscale
         hc  = soln['hc'] * qscale
-        lmd = (soln['lmd'] * alpha_bar - 11)/3
+        lmd = lambda_formula(soln['lmd'])
         scmt = soln['scmt'].astype(np.int32)
 
         rates, dulow, dumid = transition_rates_array(u, hd, hc, lmd)
@@ -419,8 +422,8 @@ class CmtSolver(object):
         u = update_cmt(u, scmt, hd, dulow, dumid, dt*T)
 
         # diagnostic
-        fcmt = (u-uold/dt)
-        soln['kcmt'] = fcmt * u
+        fcmt = (u-uold)/dt
+        self._kcmt = np.vstack([np.mean(fcmt[:,scmt==i] * u[:,scmt==i], axis=1) for i in range(3)])
 
 
         soln['u'] = u/c
