@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 
+import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,6 @@ data = read_data("./data")
 
 # cmt plot
 fig, axs= plt.subplots(1,3)
-
 for i in range(3):
     axs[i].pcolormesh(data['scmt']==i, cmap='Greys')
     axs[i].set_title("CMT={0}".format(i))
@@ -28,14 +28,16 @@ for i in range(3):
     plt.savefig('u.png')
 
 plt.figure()
-plt.plot(data['u'][:,:,2:-2].mean(axis=0).T)
+umean = data['u'][:,:,2:-2].mean(axis=0)
+plt.plot(umean.T)
 plt.legend([0,1,2])
 plt.savefig("umean.png")
 
 plt.figure()
-dul, duhi = calc_du(data['u'])
+dul, duhi = calc_du(umean)
 plt.plot(dul, label='dulow')
 plt.plot(duhi, label='duhi')
+plt.legend()
 plt.savefig("du.png")
 
 
