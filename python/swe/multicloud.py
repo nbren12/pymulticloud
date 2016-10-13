@@ -107,6 +107,7 @@ def f(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
 
     return fq
 
+
 class MulticloudModel(object):
     diags = {}
 
@@ -134,7 +135,7 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=500, dx=80 / 1500, asst=0.0, lsst=10000 / 1500, **kwargs):
+    def init_mc(self, n=500, dx=80 / 1500, asst=0.5, lsst=10000 / 1500, **kwargs):
 
         soln = Soln(n, **kwargs)
 
@@ -166,6 +167,23 @@ class MulticloudModel(object):
     def validate_soln(self, soln):
         return not np.any(np.isnan(soln)) 
 
+class MulticloudModelDissipation(MulticloudModel):
+
+    def __init__(self, *args, dissipation=1/(30),
+                 **kwargs):
+        "docstring"
+        super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
+        self.dissipation = dissipation
+
+    def onestep(self, soln, time, dt, dx, *args, **kwargs):
+        """Perform a single time step of the multicloud model"""
+        from functools import partial
+        soln = super(MulticloudModelDissipation, self).onestep(soln, time, dt, dx, *args, **kwargs)
+
+        soln['u'] = np.exp(-dt * self.dissipation) * soln['u']
+
+
+        return soln
 
 def unghosted(q):
     return q[:, 2:-2]

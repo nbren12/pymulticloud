@@ -16,7 +16,7 @@ sys.path.insert(0, "../../")
 
 # this needs to be imported before python. not sure why
 # import fortran.multicloud
-from python.swe.multicloud import main
+from python.swe.multicloud import main, MulticloudModelDissipation
 
 if __name__ == '__main__':
     from docopt import docopt
@@ -33,5 +33,6 @@ if __name__ == '__main__':
     main(run_duration=float(args['--duration']),
          dt_out=float(args['--output_interval']),
          restart_file = restart_file, 
-         cfl=float(args['--cfl']))
+         cfl=float(args['--cfl']),
+         solver=MulticloudModelDissipation())
 
