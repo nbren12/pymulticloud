@@ -5,7 +5,7 @@
 PROGRAM three_cloud_types_new_formulation
 use util
 use nonlinear_module
-use state_mod, only: n, ntrunc, fcls, fdls, fsls, scmt
+use state_mod, only: n, ntrunc, fcls, fdls, fsls, scmt, lmd
 use cmt_mod
 use param_mod
 use multicloud_mod, only: init_multicloud, updatehcds, range_kuttas, get_eqcloudfrac, T, L, alpha_bar, c, ud, theta_ebs_m_theta_eb
@@ -355,7 +355,7 @@ CALL updatehcds(fcls,fdls,fsls,u1, u2, theta1,theta2,theta_eb,q,hds,hc,hd  &
 dt=tempg
 
 CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
-    ,2.d0*dt,thteb_st,time,hds)
+    ,2.d0*dt,thteb_st,time,hds, lmd)
 dt=tempg
 
 

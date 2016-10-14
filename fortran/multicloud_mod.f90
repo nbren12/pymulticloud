@@ -187,6 +187,7 @@ contains
 
 
     ud = cd*u0*t/zb + t/tau_d
+    print *, 'UD=', ud
 
     zb=zb/l
     zt=zt/l

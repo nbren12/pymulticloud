@@ -1,5 +1,6 @@
 #!/bin/sh
-make mcnde
+make -C ../../ mcnde
+cp ../../fortran/mcnde .
 
 cat <<EOF > input.nml
 &DATA

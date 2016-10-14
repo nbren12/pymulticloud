@@ -10,4 +10,7 @@ module state_mod
 
   ! cloud fraction
   real(dp) :: fcls(n), fdls(n), fsls(n)
+
+  ! lmd
+  real(dp) :: lmd(n)
 end module state_mod
