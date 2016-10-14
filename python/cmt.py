@@ -155,8 +155,8 @@ def transition_rates_array(u, qd, qc, lmd):
 @jit(nopython=True)
 def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
-    d1 = 1 / (10 * day)
-    d2 = 1 / (10 * day)
+    d1 = 1 / (3 * day)
+    d2 = 1 / (3 * day)
     tauf =  1.25*day
     qdref = 10/day
 
@@ -399,8 +399,7 @@ class CmtSolver(object):
     def onestep(self, soln, time, dt, *args, **kwargs):
 
         soln = self._multicloud_model.onestep(soln, time, dt, *args, **kwargs)
-        if time > 100:
-            soln = self._cmt_step(soln, time, dt)
+        soln = self._cmt_step(soln, time, dt)
 
         return soln
 

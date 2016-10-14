@@ -135,7 +135,7 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=500, dx=80 / 1500, asst=0.5, lsst=10000 / 1500, **kwargs):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500, **kwargs):
 
         soln = Soln(n, **kwargs)
 
@@ -169,7 +169,7 @@ class MulticloudModel(object):
 
 class MulticloudModelDissipation(MulticloudModel):
 
-    def __init__(self, *args, dissipation=1/(30),
+    def __init__(self, *args, dissipation=0.12190154535697963,
                  **kwargs):
         "docstring"
         super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
