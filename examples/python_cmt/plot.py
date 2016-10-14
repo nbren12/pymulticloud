@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, "../../")
 
-from python.read import read_data
+from python.read import read_data, read_diags
 from python.cmt import calc_du
 
+
+
 data = read_data("./data")
+diags = read_diags("./diags.pkl")
 
 
 # cmt plot
@@ -51,3 +54,11 @@ plt.figure()
 plt.pcolormesh(data['lmd'])
 plt.colorbar()
 plt.savefig("lmd.png")
+
+import seaborn as sns
+plt.figure()
+kcmt= diags['kcmt']
+plt.plot(kcmt)
+plt.legend(["CMT=0", "CMT=1", "CMT=2"])
+plt.savefig("kcmt.png")
+
