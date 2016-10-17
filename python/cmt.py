@@ -345,7 +345,6 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
     u_cache = interpolant_hash(tout, u, dt_in)
 
     if f is None:
-        f = transition_rates
         f = tr1
 
     tout_iter = tout.flat
@@ -357,8 +356,10 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
             arg_t = [cache[t] for cache in caches]
             ut = u_cache[t]
 
+            dulow, duhi = calc_du(ut)
+
             # stochastic integration
-            rates = f(ut, *arg_t)
+            rates = f(dulow, *arg_t)
             scmt = stochastic_integrate_array(scmt, rates, t, t + dt)
             t += dt
 
@@ -369,7 +370,7 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
     return output_scmt
 
 
-def stochastic_cmt_diagnostic_run(datadir):
+def stochastic_cmt_diagnostic_run(datadir, f=tr1):
     """Run stochastic cmt scheme in diagnostic mode on previous output from the
     multicloud model.
 
@@ -402,8 +403,8 @@ def stochastic_cmt_diagnostic_run(datadir):
     scmt = np.zeros(n, dtype=np.int32)
 
     # tout
-    tout = np.mgrid[t_data.min():t_data.max():hour]
-    output_cmt = run_cmt_model(u_relax, scmt, tout, qd, qc, lmd, dt_in=600)
+    tout = t_data
+    output_cmt = run_cmt_model(u_relax, scmt, tout, qd, qc, lmd, dt_in=600, f=f)
 
     return tout, output_cmt
 
