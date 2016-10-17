@@ -300,16 +300,20 @@ def interpolant_hash(tout, qd, dt_in):
 
 
 
-def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
+def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
 
+
+    if scmt.shape != u(0).shape[1:]:
+        raise ValueError("SCMT must have the same shape as u")
 
     output_scmt = np.zeros((tout.shape[0], u(0).shape[1]))
 
     # Precalculate qd at necessary times
-    qd_cache = interpolant_hash(tout, qd, dt_in)
-    qc_cache = interpolant_hash(tout, qc, dt_in)
-    lmd_cache = interpolant_hash(tout, lmd, dt_in)
+    caches = [interpolant_hash(tout, arg, dt_in) for arg in args]
     u_cache = interpolant_hash(tout, u, dt_in)
+
+    if f is None:
+        f = transition_rates_array
 
 
     tout_iter = tout.flat
@@ -318,13 +322,11 @@ def run_cmt_model(u, scmt, tout, qd, qc, lmd, dt_in=600):
         while t < next_time - 1e-10:
             dt = min(next_time - t, dt_in)
 
-            qdt = qd_cache[t]
-            qct = qc_cache[t]
-            lmdt = lmd_cache[t]
+            arg_t = [cache[t] for cache in caches]
             ut  = u_cache[t]
 
             # stochastic integration
-            rates,_,_ = transition_rates_array(ut, qdt, qct, lmdt)
+            rates,_,_ = f(ut, *arg_t)
             scmt = stochastic_integrate_array(scmt, rates, t, t + dt)
             t += dt
 
