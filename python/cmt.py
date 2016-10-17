@@ -30,7 +30,7 @@ c = L / T
 alpha_bar = 15.34
 
 tscale = T
-qscale = alpha_bar/T
+qscale = alpha_bar / T
 
 # Useful global variables
 hsbar = 0
@@ -39,20 +39,16 @@ dulow = 0
 
 nu = 3
 
-transform_mat = {}; z={};
+transform_mat = {}
+z = {}
 nzgrid = 32
 
-z = np.arange(0,nzgrid) * np.pi/nzgrid
+z = np.arange(0, nzgrid) * np.pi / nzgrid
 m = np.arange(0, nu)
 
-transform_mat[nzgrid] = sqrt(2) * np.cos(z[:,None] * m[None,:])
-transform_mat[nzgrid][:,0] = 1.0
+transform_mat[nzgrid] = sqrt(2) * np.cos(z[:, None] * m[None, :])
+transform_mat[nzgrid][:, 0] = 1.0
 
-
-
-def lambda_formula(lmd):
-
-    return (lmd * alpha_bar + 12) / 3
 
 def cos_series_val(z, u):
     z = np.array(z, dtype=np.float64)
@@ -72,6 +68,7 @@ def calculate_dulow(u, a, b, z0=0, **kwargs):
     opt = minimize_scalar(f, bounds=(a, b), method='Bounded', **kwargs)
     return opt.x, cos_series_val(opt.x, u) - cos_series_val(z0, u)
 
+
 @jit
 def calc_du(u):
 
@@ -79,20 +76,19 @@ def calc_du(u):
     dulow = np.zeros(u.shape[1])
     dumid = np.zeros(u.shape[1])
 
-
     for i in range(uz.shape[1]):
-        uzz = uz[:,i]
+        uzz = uz[:, i]
 
         iopt = np.abs(uzz[2:14] - uzz[0]).argmax() + 2
 
         uzst = uzz[iopt]
-        dulow[i] = uzst-uzz[0]
+        dulow[i] = uzst - uzz[0]
 
-
-        imid = np.abs(uzz[16:]-uzst).argmax() + 16
-        dumid[i] = uzz[imid]-uzst
+        imid = np.abs(uzz[16:] - uzst).argmax() + 16
+        dumid[i] = uzz[imid] - uzst
 
     return dulow, dumid
+
 
 def test_calculate_dulow():
     import matplotlib.pyplot as plt
@@ -109,11 +105,38 @@ def test_calculate_dulow():
     plt.plot(cos_series_val(zopt, u), zopt, 'ro')
     plt.show()
 
+
 @jit(nopython=True)
 def heaviside(x):
     return 0.5 * (np.sign(x) + 1)
 
-@jit(nopython=True)
+
+class rates_decorator(object):
+    def __init__(self, m=3, **kwargs):
+        "docstring"
+
+        self.jit_kwargs = kwargs
+        self.m = m
+
+    def __call__(self, transition_rates):
+        """Decorator for jit based transition rates functions
+        """
+        trates = jit(transition_rates, **self.jit_kwargs)
+
+        @jit
+        def func(dulow, qd, qc, lmd, m=self.m):
+            n = qd.shape[0]
+            rates = np.zeros((m, m, n))
+
+            for i in range(n):
+                trates(dulow[i], qd[i], qc[i], lmd[i], rates[:, :, i])
+
+            return rates
+
+        return func
+
+
+@rates_decorator(nopython=True)
 def transition_rates(dulow, qd, qc, lmd, T):
     """Transition rates for stochastic CMT process"""
     taur = 8 * hour
@@ -124,10 +147,9 @@ def transition_rates(dulow, qd, qc, lmd, T):
     duref = 10
     dumin = 5
 
+    dulow = np.abs(dulow)
 
-    dulow = abs(dulow)
-
-    T[0, 1] = heaviside(qd) * exp(- lmd + beta_q * qd)
+    T[0, 1] = heaviside(qd) * exp(-lmd + beta_q * qd)
     T[1, 2] = heaviside(dulow - dumin) * exp(beta_u * dulow + beta_q * qc)
     T[1, 0] = exp(lmd + beta_q * (qdref - qd))
     T[2, 0] = T[1, 0]
@@ -135,46 +157,59 @@ def transition_rates(dulow, qd, qc, lmd, T):
 
     T /= taur
 
+
 @jit
-def transition_rates_array(u, qd, qc, lmd):
-    """Compute transition rates for scmt
+def softmax(x):
+    return (np.abs(x) + x) / 2
 
-    Returns
-    -------
-    rates, dulow, duhigh
+
+@rates_decorator(nopython=True)
+def tr1(dulow, qd, qc, lmd, T):
+    """Transition rates for stochastic CMT process
+
+    This function is empirically hand-tuned. Written on 2016-10-17.
     """
-    n = qd.shape[0]
-    rates = np.zeros((3,3, n))
-    dulow, dumid = calc_du(u)
+    q = qd + .4 * qc
 
-    for i in range(n):
-        transition_rates(dulow[i], qd[i], qc[i], lmd[i], rates[:,:,i])
+    a = 20 * softmax(lmd + .5)
+    b = np.tanh(softmax(q - 1))
+    bn = np.tanh(softmax(1 - q))
 
-    return rates, dulow, dumid
+    c = softmax(abs(dulow) - .3) * 10
+    cn = softmax(.1 - abs(dulow)) * 10
+
+    T[0, 1] = a + b
+    T[1, 2] = c
+    T[1, 0] = bn
+    T[2, 0] = bn
+    T[2, 1] = cn
+
+    T /= day
+
 
 @jit(nopython=True)
 def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
     d1 = 1 / (3 * day)
     d2 = 1 / (3 * day)
-    tauf =  1.25*day
-    qdref = 10/day
+    tauf = 1.25 * day
+    qdref = 10 / day
 
     for j in range(u.shape[0]):
         for i in range(u.shape[1]):
 
             if scmt[i] == 0:
-                u[j,i] = exp(-d1 *dt)*u[j,i]
+                u[j, i] = exp(-d1 * dt) * u[j, i]
             elif scmt[i] == 1:
-                u[j,i] = exp(-d2 *dt)*u[j,i]
+                u[j, i] = exp(-d2 * dt) * u[j, i]
 
             elif scmt[i] == 2:
                 if dumid[i] * dulow[i] < 0:
-                    kappa = -np.tanh((qd[i]/ qdref)**2) *dumid[i] / tauf
+                    kappa = -np.tanh((qd[i] / qdref)**2) * dumid[i] / tauf
                 else:
                     kappa = 0
 
-                u[1,i] = u[1,i] + kappa * dt
+                u[1, i] = u[1, i] + kappa * dt
 
     return u
 
@@ -208,30 +243,27 @@ def stochastic_integrate_array(scmt, rates, a, b):
     while len(running) > 0:
         logger.debug("running has length {0}".format(len(running)))
 
-        lam = crates[scmt[running],
-                    :,
-                    np.arange(len(running))]
+        lam = crates[scmt[running], :, np.arange(len(running))]
 
-        mask = lam[:,-1] != 0
+        mask = lam[:, -1] != 0
 
         running = running[mask]
         lam = lam[mask, :]
 
         U1 = np.random.rand(len(running))
-        tau = -log(U1)/lam[:,-1]
+        tau = -log(U1) / lam[:, -1]
         time[running] = time[running] + tau
 
         mask = time[running] < b
         running = running[mask]
 
         if len(running) > 0:
-            lam = lam[mask,:]
+            lam = lam[mask, :]
 
             U2 = np.random.rand(len(running))
 
             for i, idx in enumerate(running):
-                scmt[idx] = np.searchsorted(lam[i,:], U2[i]*lam[i,-1])
-
+                scmt[idx] = np.searchsorted(lam[i, :], U2[i] * lam[i, -1])
 
     return scmt
 
@@ -267,12 +299,12 @@ def stochastic_integrate(scmt, dulow, qd, qc, lmd, a, b):
     while True:
         rates = transition_rates(dulow, qd, qc, lmd)
         rates = np.cumsum(rates[scmt, :])
-        U = uniform(0.0,1.0)
+        U = uniform(0.0, 1.0)
         tau = -log(U) / rates[-1]
 
         if t + tau < b:
             t += tau
-            U = uniform(0.0,1.0)
+            U = uniform(0.0, 1.0)
             action_index = np.searchsorted(rates, U * rates[-1])
             scmt = action_index
         else:
@@ -299,12 +331,12 @@ def interpolant_hash(tout, qd, dt_in):
     return qd_cache
 
 
-
 def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
-
 
     if scmt.shape != u(0).shape[1:]:
         raise ValueError("SCMT must have the same shape as u")
+
+    scmt = scmt.astype(np.int32)
 
     output_scmt = np.zeros((tout.shape[0], u(0).shape[1]))
 
@@ -313,8 +345,8 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
     u_cache = interpolant_hash(tout, u, dt_in)
 
     if f is None:
-        f = transition_rates_array
-
+        f = transition_rates
+        f = tr1
 
     tout_iter = tout.flat
     t = next(tout_iter)
@@ -323,15 +355,15 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
             dt = min(next_time - t, dt_in)
 
             arg_t = [cache[t] for cache in caches]
-            ut  = u_cache[t]
+            ut = u_cache[t]
 
             # stochastic integration
-            rates,_,_ = f(ut, *arg_t)
+            rates = f(ut, *arg_t)
             scmt = stochastic_integrate_array(scmt, rates, t, t + dt)
             t += dt
 
         # store output
-        logger.info("Time %.2f days"%(next_time/day))
+        logger.info("Time %.2f days" % (next_time / day))
         output_scmt[i] = scmt
 
     return output_scmt
@@ -349,28 +381,21 @@ def stochastic_cmt_diagnostic_run(datadir):
     from .read import read_data
     import matplotlib.pyplot as plt
 
-
     # read qd
     logger.info("starting column cmt run")
     data = read_data(datadir)
 
     t_data = data['time'][:] * T
-    qd_data = data['hd'] * alpha_bar / T
-    qc_data = data['hc'] * alpha_bar / T
-    lmd_data = lambda_formula(data['lmd'])
+    qd_data = data['hd']
+    qc_data = data['hc']
+    lmd_data = data['lmd']
 
-
-
-    u_relax_data = data['u'] * c
-
+    u_relax_data = data['u']
 
     qc = interp1d(t_data, qc_data, axis=0)
     qd = interp1d(t_data, qd_data, axis=0)
     u_relax = interp1d(t_data, u_relax_data, axis=0)
-    lmd =  interp1d(t_data, lmd_data, axis=0)
-
-
-
+    lmd = interp1d(t_data, lmd_data, axis=0)
 
     # initialization
     n = qd_data.shape[1]
@@ -382,18 +407,25 @@ def stochastic_cmt_diagnostic_run(datadir):
 
     return tout, output_cmt
 
+
 class CmtSolver(object):
-    def __init__(self):
+    def __init__(self, transition_rates=tr1):
         "docstring"
+
+        logger.info("Using CMT transition rate function: " + repr(
+            transition_rates.__code__))
         from .swe.multicloud import MulticloudModel
         self._multicloud_model = MulticloudModel()
 
-        self._du = [0,0,0]
-        self.diags['kcmt'] = np.zeros((3,))
+        self._du = [0, 0, 0]
+        self.diags['kcmt'] = np.zeros((3, ))
+
+        self.transition_rates = transition_rates
 
     def init_mc(self, *args, **kwargs):
 
-        soln, dx = self._multicloud_model.init_mc(*args, extra_vars=['scmt'],
+        soln, dx = self._multicloud_model.init_mc(*args,
+                                                  extra_vars=['scmt'],
                                                   **kwargs)
 
         return soln, dx
@@ -408,29 +440,30 @@ class CmtSolver(object):
     def _cmt_step(self, soln, time, dt):
         """Step of cmt model"""
 
-
-
-        u  = soln['u'] * c
-        hd  = soln['hd'] * qscale
-        hc  = soln['hc'] * qscale
-        lmd = lambda_formula(soln['lmd'])
+        u = soln['u']
+        hd = soln['hd']
+        hc = soln['hc']
+        lmd = soln['lmd']
         scmt = soln['scmt'].astype(np.int32)
 
-        rates, dulow, dumid = transition_rates_array(u, hd, hc, lmd)
-        scmt = stochastic_integrate_array(scmt, rates, T*time, T*(time + dt))
+        dulow, dumid = calc_du(u)
+        rates = self.transition_rates(dulow, hd, hc, lmd)
+        scmt = stochastic_integrate_array(scmt, rates, T * time,
+                                          T * (time + dt))
 
         uold = u.copy()
 
-        u = update_cmt(u, scmt, hd, dulow, dumid, dt*T)
+        u = update_cmt(u, scmt, hd, dulow, dumid, dt * T)
 
         # diagnostic
-        fcmt = (u-uold)/dt
-        self.diags['kcmt'] = np.hstack(np.sum(fcmt[:,scmt==i] * u[:,scmt==i]) for i in range(3))
+        fcmt = (u - uold) / dt
+        self.diags['kcmt'] = np.hstack(np.sum(fcmt[:, scmt == i] *
+                                              u[:, scmt == i])
+                                       for i in range(3))
 
         self.diags['kcmt'][np.isnan(self.diags['kcmt'])] = 0.0
 
-
-        soln['u'] = u/c
+        soln['u'] = u
         soln['scmt'] = scmt.astype(np.float64)
 
         return soln
@@ -443,8 +476,8 @@ def main():
     t, scmt = stochastic_cmt_diagnostic_run("data")
     np.savez("scmt.npz", t=t, scmt=scmt)
 
+
 if __name__ == '__main__':
     import logging
     logging.basicConfig(level=logging.INFO)
     main()
-
