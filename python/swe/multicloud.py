@@ -8,7 +8,7 @@ import os
 import pickle
 import logging
 import uuid
-
+import copy
 import numpy as np
 
 # this import needs to happen before the others for some reason. This is
@@ -111,6 +111,10 @@ def f(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
 class MulticloudModel(object):
     diags = {}
 
+    def __init__(self):
+        "docstring"
+        self.diags['rms'] = 0.0
+
     def onestep(self, soln, time, dt, dx, nonlinear=0.0):
         """Perform a single time step of the multicloud model"""
         from functools import partial
@@ -132,6 +136,8 @@ class MulticloudModel(object):
             soln['q'], soln['hs'], dt, dx, time,
             soln['tebst'], soln['hc'],
             soln['hd'], soln['lmd'])
+
+        self.diags['rms'] = np.mean(soln['u']**2)
 
         return soln
 
@@ -169,7 +175,7 @@ class MulticloudModel(object):
 
 class MulticloudModelDissipation(MulticloudModel):
 
-    def __init__(self, *args, dissipation=0.12190154535697963,
+    def __init__(self, *args, dissipation=.1,
                  **kwargs):
         "docstring"
         super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
@@ -246,9 +252,11 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     if not os.path.isdir(datadir):
         os.mkdir(datadir)
 
+    diagfile = open("diags.pkl", "ab")
     for t, soln in steps(solver.onestep, soln, dt, (t_start, t_end), dx):
 
-        diags.append(solver.diags.copy())
+        solver.diags['time'] = t
+        pickle.dump(solver.diags, diagfile)
 
         if t > t_out:
             logger.info("Storing output data at t={0}".format(t))
@@ -263,8 +271,7 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     dump_output_file(t, output[:i_out], datadir)
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
 
-    with open("diags.pkl", "wb") as f:
-        pickle.dump(diags, f)
+    diagfile.close()
 
 
 def dump_output_file(t, output, datadir):

@@ -20,9 +20,20 @@ def read_data(datadir):
 def read_diags(name):
     import pickle
     with open(name, "rb") as f:
-        diags = pickle.load(f)
+        diags = []
+        while True:
+            try:
+                diags.append(pickle.load(f))
+            except EOFError:
+                break
 
-    return {key:np.concatenate([d[key][None,...] for d in diags]) for key in diags[0]}
+    out = {}
+    for key in diags[0]:
+        out[key] = np.vstack([d[key] for d in diags])
+        out[key] = np.squeeze(out[key])
+
+    return out
+
 
 def report_data(data):
     import matplotlib.pyplot as plt

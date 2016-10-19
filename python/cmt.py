@@ -420,6 +420,7 @@ class CmtSolver(object):
 
         self._du = [0, 0, 0]
         self.diags['kcmt'] = np.zeros((3, ))
+        self.diags['ncmt'] = np.zeros((3, ), dtype=np.int32)
 
         self.transition_rates = transition_rates
 
@@ -457,12 +458,20 @@ class CmtSolver(object):
         u = update_cmt(u, scmt, hd, dulow, dumid, dt * T)
 
         # diagnostic
-        fcmt = (u - uold) / dt
-        self.diags['kcmt'] = np.hstack(np.sum(fcmt[:, scmt == i] *
-                                              u[:, scmt == i])
-                                       for i in range(3))
 
-        self.diags['kcmt'][np.isnan(self.diags['kcmt'])] = 0.0
+        fcmt = (u - uold) / dt
+
+
+        # compute cmt diagnostics
+        for i in range(3):
+            mask = scmt == i
+            nmask = mask.sum()
+            self.diags['ncmt'][i] = nmask
+            if nmask > 0:
+                self.diags['kcmt'][i] = np.mean(fcmt[:, mask] * u[:, mask])
+            else:
+                self.diags['kcmt'][i] = 0.0
+
 
         soln['u'] = u
         soln['scmt'] = scmt.astype(np.float64)
