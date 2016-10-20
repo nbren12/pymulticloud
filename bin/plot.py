@@ -70,7 +70,7 @@ with PdfPages("report.pdf") as pdf:
 
     aspect = data['u'].shape[0] / 100 * .3
     # cmt plot
-    if 'scmt' in diags:
+    if 'scmt' in data.dtype.fields:
         for i in plotiter(range(1,3), w=3, aspect=aspect):
             plt.pcolormesh(data['scmt']==i, cmap='Greys', rasterized=True)
             plt.title("CMT={0}".format(i))
