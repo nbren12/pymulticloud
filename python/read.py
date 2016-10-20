@@ -33,31 +33,3 @@ def read_diags(name):
         out[key] = np.squeeze(out[key])
 
     return out
-
-
-def report_data(data):
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.contourf(data['u'][:, 1, :], 12, cmap='bwr')
-    plt.colorbar()
-    plt.savefig("u.png")
-
-    plt.figure()
-    plt.contourf(data['hd'], 12, cmap='bwr')
-    plt.colorbar()
-    plt.savefig("hd.png")
-
-    plt.figure()
-    plt.plot(data['time'], np.sqrt(np.mean(data['u']**2, axis=(1, 2))))
-    plt.savefig("u_rms.png")
-
-def main():
-    from docopt import docopt
-    args = docopt(__doc__)
-
-    report_data(read_data(args['<datadir>']))
-
-if __name__ == '__main__':
-    main()
-
-
