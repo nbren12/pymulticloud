@@ -221,6 +221,8 @@ class MulticloudModelDissipation(MulticloudModel):
                  **kwargs):
         "docstring"
         super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
+
+        logger.info("Dissipation=`{}`".format(dissipation))
         self.dissipation = dissipation
 
     def onestep(self, soln, time, dt, dx, *args, **kwargs):

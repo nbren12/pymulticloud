@@ -410,14 +410,18 @@ def stochastic_cmt_diagnostic_run(datadir, f=tr1):
 
 
 class CmtSolver(object):
-    def __init__(self, transition_rates=tr1):
+    def __init__(self, transition_rates=tr1, mcsolver=None):
         "docstring"
 
         logger.info("Using CMT transition rate function: " + repr(
             transition_rates.__code__))
-        from .swe.multicloud import MulticloudModel
-        self._multicloud_model = MulticloudModel()
 
+        if mcsolver is None:
+            from .swe.multicloud import MulticloudModel
+            mcsolver = MulticloudModel()
+        logger.info("Using MulticloudSolver "+ repr(mcsolver))
+
+        self._multicloud_model = mcsolver
         self._du = [0, 0, 0]
         self.diags['kcmt'] = np.zeros((3, ))
         self.diags['ncmt'] = np.zeros((3, ), dtype=np.int32)
