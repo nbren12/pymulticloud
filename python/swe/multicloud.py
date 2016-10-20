@@ -240,12 +240,17 @@ class MulticloudModelDissipation(MulticloudModel):
 
 class MulticloudModelNonlinear(MulticloudModelDissipation):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, q_tld=.9, **kwargs):
         "docstring"
         super(MulticloudModelNonlinear, self).__init__(*args, **kwargs)
 
         # arrays for AB3
         self._nonlinear_ab3 = {'u': [0,0,0], 't': [0,0,0]}
+
+
+        from functools import partial
+        logging.info("Q_TLD=`{}`".format(q_tld))
+        self._f = partial(f_nonlinear, q_tld=q_tld)
 
     def _nonlinear_source_update(self, soln, dx, dt):
         soln.comm()
@@ -262,9 +267,8 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
 
     def onestep(self, soln, time, dt, dx, *args, **kwargs):
         """Perform a single time step of the multicloud model"""
-        from functools import partial
         soln = super(MulticloudModelNonlinear, self)\
-               .onestep(soln, time, dt, dx, f=f_nonlinear, *args, **kwargs)
+               .onestep(soln, time, dt, dx, f=self._f, *args, **kwargs)
 
         # compute source terms from nolinear advection
         soln = self._nonlinear_source_update(soln, dx, dt)
