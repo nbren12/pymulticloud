@@ -4,6 +4,7 @@ Usage:
     read.py <datadir>
 """
 import os
+import itertools
 import numpy as np
 
 
@@ -33,3 +34,67 @@ def read_diags(name):
         out[key] = np.squeeze(out[key])
 
     return out
+
+
+def separate_diags(diags):
+
+    out_dict = {}
+    for key in diags:
+        arr = np.squeeze(diags[key])
+
+        if arr.ndim > 1:
+            axes = arr.shape[1:]
+
+            for inds in itertools.product(*[range(n) for n in axes]):
+                key_expanded = key +'x'.join(map(str, inds))
+
+                inds = [slice(None)] + list(inds)
+                out_dict[key_expanded] = diags[key][inds]
+        else:
+            out_dict[key] = diags[key]
+
+    return out_dict
+
+def create_xarray(data, diags):
+    import xarray as xr
+
+    scalar_variables = list(data.dtype.fields.keys())
+
+    scalar_variables.remove("u")
+    scalar_variables.remove("t")
+
+    scalar_variables.remove("time")
+
+    data_vars = {}
+    for key in scalar_variables:
+        data_vars[key] = (['time', 'i'], data[key])
+
+    i = np.arange(data['u'].shape[-1])
+    coords = {'time': data['time'],
+              'i': i}
+
+    # diagnostic variables
+    diags = separate_diags(diags)
+    for key in diags:
+        if key != 'time':
+            data_vars[key] = (['time_d',], diags[key])
+
+    coords['time_d'] = diags['time']
+
+
+
+
+    return xr.Dataset(data_vars, coords)
+
+
+def main(datadir, diagname, output_name):
+    data = read_data(datadir)
+    diags = read_diags(diagname)
+
+    create_xarray(data, diags).to_netcdf(output_name)
+
+    return 0
+
+if __name__ == '__main__':
+    import sys
+    main(*sys.argv[1:])
