@@ -10,6 +10,7 @@ import logging
 import uuid
 import copy
 import numpy as np
+from math import sqrt
 
 # this import needs to happen before the others for some reason. This is
 # probably a conflict with numba.
@@ -107,6 +108,47 @@ def f(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
 
     return fq
 
+def f_nonlinear(q, fq=None, alpha_tld=0.1, lmd_tld=0.8, q_tld=0.9, L=3):
+    """Conservative flux according to stechmann and majda"""
+    u = q[:2*L:2]
+    T = q[1:2*L:2]
+    moist = q[L*2]
+
+    if fq is None:
+        fq = np.empty_like(q)
+
+    fq[0] = 0.0
+    fq[1] = 0.0
+    fq[2] = - T[1] +3.0/sqrt(2) * u[1] * u[2]
+    fq[3] = - u[1] + sqrt(2) *u[1] * T[2] - u[2] * T[1] / sqrt(2)
+    fq[4] = -T[2]
+    fq[5] = -u[2] / 4
+    fq[6] = q_tld * (u[1] + lmd_tld * u[2]) \
+                                  + moist * (u[1] + alpha_tld * u[2])
+
+    return fq
+
+
+def nonlinear_source(u, T, dx, L=3):
+    """Nonconservative terms according to stechmann Majda"""
+    from scipy.ndimage import correlate1d
+
+    # compute centered differences
+    du = correlate1d(u, [-1/2/dx, 0, 1/2/dx], axis=1)
+    dT = correlate1d(T, [-1/2/dx, 0, 1/2/dx], axis=1)
+
+    ft = np.empty_like(T)
+    fu = np.empty_like(u)
+
+    fu[0] = 0.0
+    fu[1] = 3/2/sqrt(2) * u[1] * du[2]
+    fu[2] = 0.0
+
+    ft[0] = 0.0
+    ft[1] = -(2 * du[1] * T[2] + T[1] * du[2]/2)/sqrt(2)
+    ft[2] = -1/2/sqrt(2) * (u[1] * dT[1]-T[1]*du[1])
+
+    return dict(u=fu, t=ft)
 
 class MulticloudModel(object):
     diags = {}
@@ -115,7 +157,7 @@ class MulticloudModel(object):
         "docstring"
         self.diags['rms'] = 0.0
 
-    def onestep(self, soln, time, dt, dx, nonlinear=0.0):
+    def onestep(self, soln, time, dt, dx, nonlinear=0.0, f=f):
         """Perform a single time step of the multicloud model"""
         from functools import partial
 
@@ -184,10 +226,46 @@ class MulticloudModelDissipation(MulticloudModel):
     def onestep(self, soln, time, dt, dx, *args, **kwargs):
         """Perform a single time step of the multicloud model"""
         from functools import partial
-        soln = super(MulticloudModelDissipation, self).onestep(soln, time, dt, dx, *args, **kwargs)
+        soln = super(MulticloudModelDissipation, self)\
+               .onestep(soln, time, dt, dx, *args, **kwargs)
 
         soln['u'] = np.exp(-dt * self.dissipation) * soln['u']
 
+
+        return soln
+
+
+
+class MulticloudModelNonlinear(MulticloudModelDissipation):
+
+    def __init__(self, *args, **kwargs):
+        "docstring"
+        super(MulticloudModelNonlinear, self).__init__(*args, **kwargs)
+
+        # arrays for AB3
+        self._nonlinear_ab3 = {'u': [0,0,0], 't': [0,0,0]}
+
+    def _nonlinear_source_update(self, soln, dx, dt):
+        soln.comm()
+        du = nonlinear_source(soln['u'], soln['t'], dx, L=3)
+
+        for key in du:
+            dd = self._nonlinear_ab3[key]
+            dd.pop()
+            dd.insert(0, du[key])
+
+            soln[key] = soln[key] + dt * (dd[0] * 23/ 12 - 4/3 * dd[1] + 5/12 *dd[2])
+
+        return soln
+
+    def onestep(self, soln, time, dt, dx, *args, **kwargs):
+        """Perform a single time step of the multicloud model"""
+        from functools import partial
+        soln = super(MulticloudModelNonlinear, self)\
+               .onestep(soln, time, dt, dx, f=f_nonlinear, *args, **kwargs)
+
+        # compute source terms from nolinear advection
+        soln = self._nonlinear_source_update(soln, dx, dt)
 
         return soln
 
@@ -218,10 +296,12 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     """
     t_start = 0.0
 
-    logger.info("Starting run with duration={0}".format(run_duration))
 
     if solver is None:
         solver = MulticloudModel()
+
+    logger.info("solver object = " + repr(solver))
+    logger.info("Starting run with duration={0}".format(run_duration))
 
     soln, dx = solver.init_mc()
 
