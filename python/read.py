@@ -73,6 +73,12 @@ def create_xarray(data, diags):
     coords = {'time': data['time'],
               'i': i}
 
+    # non scalar vars
+    for key in ['u', 't']:
+        nm = data[key].shape[1]
+        for m in range(nm):
+            data_vars[key + str(m)] = (['time', 'i'], data[key][:, m,:])
+
     # diagnostic variables
     diags = separate_diags(diags)
     for key in diags:
@@ -86,6 +92,12 @@ def create_xarray(data, diags):
 
     return xr.Dataset(data_vars, coords)
 
+
+def load_xarray(datadir="data/", diagname="diags.pkl"):
+    data = read_data(datadir)
+    diags = read_diags(diagname)
+
+    return create_xarray(data, diags)
 
 def main(datadir, diagname, output_name):
     data = read_data(datadir)
