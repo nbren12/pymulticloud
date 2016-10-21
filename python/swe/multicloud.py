@@ -9,6 +9,7 @@ import pickle
 import logging
 import uuid
 import copy
+from collections import deque
 import numpy as np
 from math import sqrt
 
@@ -213,12 +214,11 @@ class MulticloudModel(object):
         return soln.record_array_soln(t)
 
     def validate_soln(self, soln):
-        return not np.any(np.isnan(soln)) 
+        return not np.any(np.isnan(soln))
 
 class MulticloudModelDissipation(MulticloudModel):
 
-    def __init__(self, *args, dissipation=.1,
-                 **kwargs):
+    def __init__(self, *args, dissipation=.1, **kwargs):
         "docstring"
         super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
 
@@ -245,7 +245,7 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
         super(MulticloudModelNonlinear, self).__init__(*args, **kwargs)
 
         # arrays for AB3
-        self._nonlinear_ab3 = {'u': [0,0,0], 't': [0,0,0]}
+        self._nonlinear_ab3 = {key: deque([0,0,0], maxlen=3) for key in ['u', 't']}
 
 
         from functools import partial
@@ -258,8 +258,7 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
 
         for key in du:
             dd = self._nonlinear_ab3[key]
-            dd.pop()
-            dd.insert(0, du[key])
+            dd.appendleft(du[key])
 
             soln[key] = soln[key] + dt * (dd[0] * 23/ 12 - 4/3 * dd[1] + 5/12 *dd[2])
 
