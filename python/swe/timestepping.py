@@ -14,8 +14,7 @@ def steps(onestep, q, dt, tbound, *args, **kwargs):
 
     while (t < tbound[1] - 1e-10):
         dt = min(dt, tbound[1]-t)
-        q = onestep(q, t, dt, *args, **kwargs)
-        t+=dt
+        q, t  = onestep(q, t, dt, *args, **kwargs), t + dt
 
         logging.debug("t = {t:.2f}".format(t=t))
 

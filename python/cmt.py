@@ -247,8 +247,7 @@ def stochastic_integrate_array(scmt, rates, a, b):
 
         mask = lam[:, -1] != 0
 
-        running = running[mask]
-        lam = lam[mask, :]
+        running, lam = running[mask], lam[mask, :]
 
         U1 = np.random.rand(len(running))
         tau = -log(U1) / lam[:, -1]
