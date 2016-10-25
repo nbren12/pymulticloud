@@ -101,7 +101,8 @@ with PdfPages("report.pdf") as pdf:
         clim.pop('u')
 
         # any extra plots
-        plots['misc'] = clim
+        if len(clim) > 0:
+            plots['misc'] = clim
 
         for k in plotiter(plots, w=6, ncol=1, aspect=.3):
             for field in plots[k]:
