@@ -26,7 +26,10 @@ import python.swe.multicloud
 
 
 def solver_args_to_dict(args):
-    return eval("dict("+args+")")
+    if args is None:
+        return {}
+    else:
+        return eval("dict("+args+")")
 
 if __name__ == '__main__':
     from docopt import docopt

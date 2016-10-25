@@ -99,7 +99,7 @@ contains
 
     theta_ebs_m_theta_eb = 10.d0 !K discrepancy between boundary layer theta_e and its saturation value
 
-    tau_e= (theta_ebs_m_theta_eb/qr01)*(zb/zt)*pi/2.d0/DSQRT(2.d0)! Evaporative time scale
+    ! tau_e= (theta_ebs_m_theta_eb/qr01)*(zb/zt)*pi/2.d0/DSQRT(2.d0)! Evaporative time scale
 
     theta_eb_m_theta_em=11.d0!K discrepancy between boundary layer and middle tropospheric theta_e''s
     theta_eb_elbar=0.d0!K discrepancy between boundary layer and lower middle tropospheric theta_e''s
