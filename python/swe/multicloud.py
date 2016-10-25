@@ -31,6 +31,13 @@ class Soln(object):
         self.variables += list(extra_vars)
         self._data = np.zeros((self.neq, n))
 
+    @classmethod
+    def from_arr(cls, arr, **kwargs):
+        soln = cls(arr.shape[-1], **kwargs)
+        soln._data = arr
+
+        return soln
+
     def __getitem__(self, name):
         try:
             return self._data[self.variable_idxs[name]]
@@ -157,6 +164,18 @@ class MulticloudModel(object):
     def __init__(self):
         "docstring"
         self.diags['rms'] = 0.0
+        self.reset_avg()
+
+    def update_avg(self, soln):
+
+        if self.avg is None:
+            self.avg, self.navg =  soln._data, 1
+        else:
+            self.avg, self.navg =  (self.avg * self.navg + soln._data)/(self.navg+1), self.navg + 1
+
+    def reset_avg(self):
+        self.avg = None
+        self.navg = 0.0
 
     def onestep(self, soln, time, dt, dx, nonlinear=0.0, f=f):
         """Perform a single time step of the multicloud model"""
@@ -181,6 +200,7 @@ class MulticloudModel(object):
             soln['hd'], soln['lmd'])
 
         self.diags['rms'] = np.mean(soln['u']**2)
+        self.update_avg(soln)
 
         return soln
 
@@ -338,10 +358,19 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
         os.mkdir(datadir)
 
     diagfile = open("diags.pkl", "ab")
+
+
     for t, soln in steps(solver.onestep, soln, dt, (t_start, t_end), dx):
 
         solver.diags['time'] = t
         pickle.dump(solver.diags, diagfile)
+
+        # get averages
+        if solver.avg is None:
+            avg, navg = soln._data, 1
+        else:
+            avg, navg = (avg * navg + solver.avg)/(navg + 1), navg + 1
+        solver.reset_avg()
 
         if t > t_out:
             logger.info("Storing output data at t={0}".format(t))
@@ -355,8 +384,11 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
 
     dump_output_file(t, output[:i_out], datadir)
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
-
     diagfile.close()
+
+    avg = Soln.from_arr(avg).record_array_soln(t)
+    np.savez("averages.npz", avg=avg)
+
 
 
 def dump_output_file(t, output, datadir):
