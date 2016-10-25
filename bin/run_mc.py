@@ -4,8 +4,10 @@
 Usage:
     run_mc.py [-r <restart_file>]
               [--duration=<time>]
-              [--output_interval=<interval>] [--cfl=<float>]
-              [--solver=<name>] [--solver-args=<args>]
+              [--output_interval=<interval>]
+              [--cfl=<float>]
+              [--solver=<name>]
+              [--solver-args=<args>]
               [--init-args=<args>]
 
 Options:
