@@ -210,6 +210,8 @@ class MulticloudModel(object):
 
         fceq, fdeq, fseq = mc.equilibrium_fractions()
 
+        logging.info("ASST=`{}`,n=`{}`, dx=`{}`".format(asst, n, dx))
+
         soln['fc'] = fceq
         soln['fd'] = fdeq
         soln['fs'] = fseq
@@ -313,7 +315,8 @@ def load_restart_file(name):
     return arr
 
 
-def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
+def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None,
+         cfl=.1, init_kwargs={}):
     """Runs multicloud model
 
     TODO This file is too complicated needs to be refactored, and the IO needs
@@ -328,7 +331,7 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None, cfl=.1):
     logger.info("solver object = " + repr(solver))
     logger.info("Starting run with duration={0}".format(run_duration))
 
-    soln, dx = solver.init_mc()
+    soln, dx = solver.init_mc(**init_kwargs)
 
     if restart_file is not None:
         soln, t_start, dx = load_restart_file(restart_file)

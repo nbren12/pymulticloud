@@ -2,8 +2,11 @@
 """Run python multicloud model
 
 Usage:
-    run_mc.py [-r <restart_file>] [--duration=<time>] [--output_interval=<interval>] [--cfl=<float>]
+    run_mc.py [-r <restart_file>]
+              [--duration=<time>]
+              [--output_interval=<interval>] [--cfl=<float>]
               [--solver=<name>] [--solver-args=<args>]
+              [--init-args=<args>]
 
 Options:
     -r --restart                        use restart file to initialize run
@@ -12,6 +15,7 @@ Options:
     -i <time> --output_interval=<time>  run duration [default: .25]
     --solver=<name>                     solver [default: dissip]
     --solver-args=<args>                solver initialization arguments
+    --init-args=<args>                  initial condition arguments
 """
 import sys
 import os
@@ -25,7 +29,7 @@ from python.swe.multicloud import main
 import python.swe.multicloud
 
 
-def solver_args_to_dict(args):
+def args_to_dict(args):
     if args is None:
         return {}
     else:
@@ -45,7 +49,9 @@ if __name__ == '__main__':
 
     solver_name = args['--solver']
 
-    solver_args = solver_args_to_dict(args['--solver-args'])
+    solver_args = args_to_dict(args['--solver-args'])
+
+    ic_args =args_to_dict(args['--init-args'])
 
     if solver_name == 'dissip':
         solver = python.swe.multicloud.\
@@ -68,5 +74,6 @@ if __name__ == '__main__':
          dt_out=float(args['--output_interval']),
          restart_file = restart_file,
          cfl=float(args['--cfl']),
-         solver=solver)
+         solver=solver,
+         init_kwargs=ic_args)
 
