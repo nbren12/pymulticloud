@@ -20,7 +20,7 @@ from python.cmt import calc_du
 data = read_data("./data")
 diags = read_diags("./diags.pkl")
 
-def clim_plot(data):
+def clim_plot_mean(data):
     variables = list(data.dtype.fields.keys())
 
     variables.remove("u")
@@ -29,6 +29,17 @@ def clim_plot(data):
     clim = {key: np.mean(data[key], axis=0) for key in variables}
     for k, v in plotiter(clim.items(), w=3, aspect=.8):
         plt.plot(v)
+        plt.title(k)
+
+def clim_plot(data):
+    variables = list(data.dtype.fields.keys())
+
+    variables.remove("u")
+    variables.remove("t")
+    variables.remove("time")
+    clim = {key: data[key] for key in variables}
+    for k, v in plotiter(clim.items(), w=3, aspect=.8):
+        plt.plot(np.squeeze(v))
         plt.title(k)
 
 def kcmt_plots(d):
@@ -62,7 +73,46 @@ def kcmt_plots(d):
 
     plt.tight_layout()
 
+
+
 with PdfPages("report.pdf") as pdf:
+
+
+    def clim_plot(data):
+        from collections import OrderedDict
+        # Climatology plots
+        variables = list(data.dtype.fields.keys())
+        variables.remove("time")
+
+        if os.path.exists("./averages.npz"):
+            avg = np.load("./averages.npz")['avg']
+            clim = {key: data[key] for key in variables}
+        else:
+            clim = {key: np.mean(data[key], axis=0) for key in variables}
+
+
+        plots = OrderedDict()
+        for k, fields in {'fracs': ['fc', 'fd', 'fs'],
+                          'rates': ['hc', 'hd', 'hs'],
+                          'moist': ['teb', 'q', 'lmd', 'tebst']}.items():
+            plots[k] = {f: clim.pop(f) for f in fields}
+
+        # velocity and temperature plots
+        for i in range(1,3):
+            plots.setdefault('u', {})['u{}'.format(i)] = clim['u'][i,:]
+            plots.setdefault('t', {})['t{}'.format(i)] = clim['t'][i,:]
+        clim.pop('t')
+        clim.pop('u')
+
+        # any extra plots
+        for k in clim:
+            plots['misc'] = clim[k]
+
+        for k in plotiter(plots, w=6, ncol=1, aspect=.3):
+            for field in plots[k]:
+                data = plots[k][field]
+                plt.plot(np.squeeze(data), label=field)
+            plt.legend()
 
     clim_plot(data)
     pdf.savefig()
