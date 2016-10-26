@@ -120,13 +120,19 @@ with PdfPages("report.pdf") as pdf:
         plt.tight_layout()
 
     def hov_plot(data):
+        from scipy.ndimage import gaussian_filter
 
         plots = OrderedDict()
 
         data = data.isel(time=slice(-800, None))
 
+
         plots['u1'] = data['u1'], dict(cmap='bwr')
-        plots['hd'] = data['hd'], dict(cmap='Purples_r', vmin=0.0, vmax=.5)
+
+
+        hdblur = data['hd'].copy()
+        hdblur.values = gaussian_filter(hdblur.values, 1.2)
+        plots['hd'] = hdblur, dict(cmap='hot', norm=LogP1(data['hd']), vmin=None, vmax=None)
         plots['q'] = data['q'], dict(cmap='YlGnBu')
         plots['tem-teb'] = data['lmd'], dict(cmap='YlGnBu')
 
