@@ -126,12 +126,12 @@ with PdfPages("report.pdf") as pdf:
         data = data.isel(time=slice(-800, None))
 
         plots['u1'] = data['u1'], dict(cmap='bwr')
-        plots['hd'] = data['hd'], dict(cmap='YlGnBu_r')
+        plots['hd'] = data['hd'], dict(cmap='Purples_r', vmin=0.0, vmax=.5)
         plots['q'] = data['q'], dict(cmap='YlGnBu')
         plots['tem-teb'] = data['lmd'], dict(cmap='YlGnBu')
 
         if 'scmt' in data:
-            plots['scmt'] = data['scmt'], dict(cmap='YlGnBu_r', vmin=0, vmax=2)
+            plots['scmt'] = data['scmt'], dict(cmap='bwr', vmin=0, vmax=2)
 
         for k in plotiter(plots,
                           w=4,
@@ -141,6 +141,7 @@ with PdfPages("report.pdf") as pdf:
             arg, kw1 = plots[k]
 
             vmin, vmax = np.percentile(arg, [1,99])
+
             kw = {}
             kw['vmin'] = vmin
             kw['vmax'] = vmax
