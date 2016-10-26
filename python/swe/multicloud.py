@@ -210,7 +210,7 @@ class MulticloudModel(object):
 
         fceq, fdeq, fseq = mc.equilibrium_fractions()
 
-        logging.info("ASST=`{}`,n=`{}`, dx=`{}`".format(asst, n, dx))
+        logger.info("ASST=`{}`,n=`{}`, dx=`{}`".format(asst, n, dx))
 
         soln['fc'] = fceq
         soln['fd'] = fdeq
@@ -271,7 +271,7 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
 
 
         from functools import partial
-        logging.info("Q_TLD=`{}`".format(q_tld))
+        logger.info("Q_TLD=`{}`".format(q_tld))
         self._f = partial(f_nonlinear, q_tld=q_tld)
 
     def _nonlinear_source_update(self, soln, dx, dt):
