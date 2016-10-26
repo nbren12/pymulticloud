@@ -11,11 +11,10 @@ from gnl.plots import *
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, root_dir)
 
-from python.read import read_data, read_diags
+from python.read import read_data, read_diags, load_xarray
 from python.cmt import calc_du
 
-data = read_data("./data")
-diags = read_diags("./diags.pkl")
+data  = load_xarray("data/", "diags.pkl")
 
 
 def clim_plot_mean(data):
@@ -45,18 +44,22 @@ def clim_plot(data):
 def kcmt_plots(d):
     pt = plotiter(range(5), ncol=1, w=6, aspect=.3)
 
+    kcmt = np.vstack(d['kcmt{}'.format(i)] for i in range(3)).T
+    ncmt = np.vstack(d['ncmt{}'.format(i)] for i in range(3)).T
+
     next(pt)
-    plt.plot(d['ncmt'])
+    plt.plot(ncmt)
     plt.title("ncmt")
     plt.legend(range(3))
 
     next(pt)
+    plt.plot(kcmt)
     plt.title("kcmt")
-    plt.plot(d['kcmt'])
+    plt.legend(range(3))
 
     next(pt)
     plt.title("kcmt * ncmt")
-    plt.plot(d['kcmt'] * d['ncmt'])
+    plt.plot(kcmt * ncmt)
     plt.legend(range(3))
 
     next(pt)
@@ -65,8 +68,8 @@ def kcmt_plots(d):
 
     next(pt)
     rms = np.ma.array(d['rms'])
-    n = np.sum(d['ncmt'][1, :])
-    fcmt = np.sum(d['kcmt'] * d['ncmt'] / n, axis=1)
+    n = np.sum(ncmt[1, :])
+    fcmt = np.sum(kcmt * ncmt / n, axis=1)
     keff = fcmt / rms
     plt.plot(keff)
     plt.title(r"$k_{{eff}}^{{-1}}$ = 1/{:.2f} = {:.2f} day".format(-keff.mean(
@@ -78,61 +81,72 @@ with PdfPages("report.pdf") as pdf:
 
     def clim_plot(data):
         # Climatology plots
-        variables = list(data.dtype.fields.keys())
-        variables.remove("time")
-
-        if os.path.exists("./averages.npz"):
-            avg = np.load("./averages.npz")['avg']
-            clim = {key: data[key] for key in variables}
-        else:
-            clim = {key: np.mean(data[key], axis=0) for key in variables}
+        clim = data.mean('time')
+        variables = set([k for k in clim.data_vars if "i" in data[k].coords])
 
         plots = OrderedDict()
         for k, fields in {'fracs': ['fc', 'fd', 'fs'],
                           'rates': ['hc', 'hd', 'hs'],
                           'moist': ['teb', 'q', 'lmd', 'tebst']}.items():
-            plots[k] = {f: clim.pop(f) for f in fields}
+            plots[k] = {}
+            for f in fields:
+                plots[k][f] = clim[f]
+                variables.remove(f)
 
+        
         # velocity and temperature plots
-        for i in range(1, 3):
-            plots.setdefault('u', {})['u{}'.format(i)] = clim['u'][i, :]
-            plots.setdefault('t', {})['t{}'.format(i)] = clim['t'][i, :]
-        clim.pop('t')
-        clim.pop('u')
+        plots['u'] = {}
+        plots['t'] = {}
+        for i in range(0, 3):
+            v = 'u{}'.format(i)
+            t = 't{}'.format(i)
+            if i > 0:
+                plots['u'][v] = clim[v]
+                plots['t'][t] = clim[t]
+            variables.remove(v)
+            variables.remove(t)
 
         # any extra plots
-        if len(clim) > 0:
-            plots['misc'] = clim
+        if len(variables) > 0:
+            plots['misc'] = {}
+            for k in variables:
+                plots['misc'][k] = clim[k]
 
         for k in plotiter(plots, w=6, ncol=1, aspect=.3):
             for field in plots[k]:
                 data = plots[k][field]
-                plt.plot(np.squeeze(data), label=field)
+                data.plot()
             plt.legend()
         plt.tight_layout()
 
     def hov_plot(data):
 
         plots = OrderedDict()
-        istart = 400
-        plots['u1'] = (data['u'][istart:, 1, :], ), dict(cmap='bwr')
-        plots['hd'] = (data['hd'][istart:, ...], ), dict(norm=LogP1(3),
-                                                         cmap='YlGnBu_r')
-        plots['q'] = (data['q'][istart:, ...], ), dict(cmap='YlGnBu')
-        plots['tem-teb'] = (data['lmd'][istart:, ...], ), dict(cmap='YlGnBu')
 
-        if 'scmt' in data.dtype.fields:
-            plots['scmt'] = (data['scmt'][istart:, ...], ), dict(
-                cmap='YlGnBu_r')
+        data = data.isel(time=slice(-800, None))
+
+        plots['u1'] = data['u1'], dict(cmap='bwr')
+        plots['hd'] = data['hd'], dict(cmap='YlGnBu_r')
+        plots['q'] = data['q'], dict(cmap='YlGnBu')
+        plots['tem-teb'] = data['lmd'], dict(cmap='YlGnBu')
+
+        if 'scmt' in data:
+            plots['scmt'] = data['scmt'], dict(cmap='YlGnBu_r', vmin=0, vmax=2)
 
         for k in plotiter(plots,
                           w=4,
                           ncol=3,
                           aspect=2,
                           label_dict=dict(loc=(0.0, 1.03))):
-            arg, kw = plots[k]
-            plt.pcolormesh(*arg, rasterized=True, **kw)
-            plt.colorbar()
+            arg, kw1 = plots[k]
+
+            vmin, vmax = np.percentile(arg, [1,99])
+            kw = {}
+            kw['vmin'] = vmin
+            kw['vmax'] = vmax
+            kw.update(kw1)
+
+            im = arg.plot(rasterized=True, **kw)
             plt.title(k)
             plt.axis('tight')
 
@@ -175,6 +189,6 @@ with PdfPages("report.pdf") as pdf:
     # plt.colorbar()
     # pdf.savefig()
 
-    if 'kcmt' in diags:
-        kcmt_plots(diags)
+    if 'kcmt1' in data:
+        kcmt_plots(data)
         pdf.savefig()
