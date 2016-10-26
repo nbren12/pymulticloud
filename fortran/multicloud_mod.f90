@@ -7,10 +7,11 @@ module multicloud_mod
 
   private
 
+
   ! basic nondimensional scales
   real(8) :: t, c, l, alpha_bar
 
-  integer, parameter :: nstochloc = 30
+  integer :: nstochloc
 
   ! parameters of mc
 
@@ -30,6 +31,22 @@ module multicloud_mod
 
   real(8) u0, cd, lcp
 
+  ! stochastic integrator
+  integer :: stochtype
+
+
+  namelist /MCPARM/ nstochloc,&
+       a,b,a0,a1,a2,a0p,a1p,a2p,alpha2,alpha3,&
+       lambdas,alpha_s,alpha_c,xis,xic,mu,ud,thetap,thetam,&
+       tau_conv,tau_e, tau_s,tau_c,tau_r, tau_d, sdc,dtype,&
+       tau01,tau02,tau10,tau12,tau20,tau30,tau23, r23value, times, taumult,&
+       capebar, cape0,dry,pbar, qbar,fceq,fdeq,fseq, rstoch,&
+       theta_eb_elbar,deltac,deltac1,&
+       qr01,qr02,lambdabar,qcbar,dbar,&
+       theta_eb_m_theta_em,m0,theta_ebs_m_theta_eb,moist0,alpha4,&
+       u0, cd, lcp,&
+       stochtype
+
 contains
   subroutine get_eqcloudfrac(a, b, c)
     real(8) a, b, c
@@ -38,125 +55,143 @@ contains
     c = fseq
   end subroutine get_eqcloudfrac
   subroutine init_multicloud()
+    logical nml_file_exists
 
-    nstochgl=nstochloc
-    pi=4*DATAN(1.d0)
+       nstochloc = 30
+       pi=4*DATAN(1.d0)
 
-    !     Parametrization parameters: a1=1; a2=0 ====> CAPE parametrization
-    !                                 a1=0, a2=1=====> moisture parametrization
+       !     Parametrization parameters: a1=1; a2=0 ====> CAPE parametrization
+       !                                 a1=0, a2=1=====> moisture parametrization
 
+       ! stochastic integrator 1=gillespie, 2=tauleaping
+       stochtype = 1
 
-    a1=0.5D0
-    a2=1.d0 -a1
-    a0=2.d0
+       a1=0.5D0
+       a2=1.d0 -a1
+       a0=2.d0
 
-    a1p=1.d0  !Coefficient  of theta_eb in low CAPE, should be 1
-    a2p=0.d0  ! Coefficient of q in low CAPE should be zero
-    a0p=1.5D0
-    alpha2=.1D0 ! gamma_2 in the papers (JASI,JASII,TAO,TCFD)
-    alpha3=.1D0 ! alpha_2 in the papers
-    alpha4=2.d0
+       a1p=1.d0  !Coefficient  of theta_eb in low CAPE, should be 1
+       a2p=0.d0  ! Coefficient of q in low CAPE should be zero
+       a0p=1.5D0
+       alpha2=.1D0 ! gamma_2 in the papers (JASI,JASII,TAO,TCFD)
+       alpha3=.1D0 ! alpha_2 in the papers
+       alpha4=2.d0
 
-    !     lower threshold for parameter lambda: mesuring dryness and moisteness of middle troposphere
-
-
-    lambdas=0.d0
-
-    ! Scales
-    c         = dsqrt(n2) *zt / pi
-    alpha_bar = zm * n2 * theta0 / g ! temperature scale
-    L         = dsqrt(c / beta)
-    T         = L / c
+       !     lower threshold for parameter lambda: mesuring dryness and moisteness of middle troposphere
 
 
-    cd=.001 ! momentum drag coefficient
-    u0=2.d0 !m/s strength of turbulent fluctuations
-    tau_d = 75*day! sec           Rayleigh-wind Relaxation Scale
-    tau_r= 50*day !sec           Newtonian Cooling Relaxation Time Scale
-    tau_s=3.d0*hour  !sec           Stratiform adjustment time Scale (not to confuse with stratiform time scale which is given by tau_conv
-    tau_conv=  2*hour !sec           Convective time scale
-    tau_c=3*hour   !sec   Congestus adjustment time scale (not to confuse with congestus time scale which is given by tau_conv/alpha_c )
+       lambdas=0.d0
+
+       ! Scales
+       c         = dsqrt(n2) *zt / pi
+       alpha_bar = zm * n2 * theta0 / g ! temperature scale
+       L         = dsqrt(c / beta)
+       T         = L / c
 
 
-
-    ! RCE fixed by QR01,theta_ebs_m_theta_eb,theta_eb_m_theta_em,thetap,thetam
-
+       cd=.001 ! momentum drag coefficient
+       u0=2.d0 !m/s strength of turbulent fluctuations
+       tau_d = 75*day! sec           Rayleigh-wind Relaxation Scale
+       tau_r= 50*day !sec           Newtonian Cooling Relaxation Time Scale
+       tau_s=3.d0*hour  !sec           Stratiform adjustment time Scale (not to confuse with stratiform time scale which is given by tau_conv
+       tau_conv=  2*hour !sec           Convective time scale
+       tau_c=3*hour   !sec   Congestus adjustment time scale (not to confuse with congestus time scale which is given by tau_conv/alpha_c )
 
 
 
-    qr01 = 1.d0/day!/2/dsqrt(2.d0)       ! prescribed radiative cooling associated with first baroclinic
-
-    alpha_s=0.25D0            ! ratio of deep convective and stratiform heating rates
-
-    alpha_c=0.1D0  !ratio of deep convective and congestus time scales
-
-    mu= 0.25D0   ! contribution of lower  tropospheric cooling (H_s - H_c) to downdrafts
-    xic=0.0D0
-    xis=0.4D0
-
-
-    deltac=(16-3*pi*xic)/(16+3*pi*xic)
-
-    theta_ebs_m_theta_eb = 10.d0 !K discrepancy between boundary layer theta_e and its saturation value
-
-    ! tau_e= (theta_ebs_m_theta_eb/qr01)*(zb/zt)*pi/2.d0/DSQRT(2.d0)! Evaporative time scale
-
-    theta_eb_m_theta_em=11.d0!K discrepancy between boundary layer and middle tropospheric theta_e''s
-    theta_eb_elbar=0.d0!K discrepancy between boundary layer and lower middle tropospheric theta_e''s
-
-    deltac1=0.d0
+       ! RCE fixed by QR01,theta_ebs_m_theta_eb,theta_eb_m_theta_em,thetap,thetam
 
 
 
 
-    thetap=20.d0!
-    thetam=10.d0 !K thresholds moistening and drying of middle troposphere
+       qr01 = 1.d0/day!/2/dsqrt(2.d0)       ! prescribed radiative cooling associated with first baroclinic
 
-    a=(1.d0-lambdas)/(thetap-thetam)
-    b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
+       alpha_s=0.25D0            ! ratio of deep convective and stratiform heating rates
 
+       alpha_c=0.1D0  !ratio of deep convective and congestus time scales
 
-    ! Stochastic Params
-
-    CAPE0 = 400 ! J / Kg
-    MOIST0 = 30 ! K
-    rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
+       mu= 0.25D0   ! contribution of lower  tropospheric cooling (H_s - H_c) to downdrafts
+       xic=0.0D0
+       xis=0.4D0
 
 
+       deltac=(16-3*pi*xic)/(16+3*pi*xic)
 
-    IF(theta_eb_m_theta_em <= thetam) THEN
-       lambdabar=lambdas
-    ELSE IF(theta_eb_m_theta_em < thetap) THEN
-       lambdabar=a*theta_eb_m_theta_em+b
-    ELSE
-       lambdabar=1.d0
-    END IF
+       theta_ebs_m_theta_eb = 10.d0 !K discrepancy between boundary layer theta_e and its saturation value
 
+       ! tau_e= (theta_ebs_m_theta_eb/qr01)*(zb/zt)*pi/2.d0/DSQRT(2.d0)! Evaporative time scale
 
+       theta_eb_m_theta_em=11.d0!K discrepancy between boundary layer and middle tropospheric theta_e''s
+       theta_eb_elbar=0.d0!K discrepancy between boundary layer and lower middle tropospheric theta_e''s
 
-    !    stochastic RCE parameters
-    ! TODO : refactor m0, rstoch, alpha_Bar, l, c into calculate_rce
-    
-    taumult = 1.0
-    ! FMK13 Taus
-    tau01 = 1.0d0
-    tau02 = 3.0d0
-    tau10 = 1.0d0
-    tau12 = 1.0d0
-    tau20 = 3.0d0
-    tau30 = 5.0d0
-    tau23 = 3.0d0
+       deltac1=0.d0
 
 
-    tau01=tau01*taumult
-    tau02=tau02*taumult
-    tau10=tau10*taumult
-    tau12=tau12*taumult
-    tau20=tau20*taumult
-    tau30=tau30*taumult
-    tau23= tau23*taumult
-    call nondimensionalize_params
-    call calculate_rce()
+
+
+       thetap=20.d0!
+       thetam=10.d0 !K thresholds moistening and drying of middle troposphere
+
+       a=(1.d0-lambdas)/(thetap-thetam)
+       b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
+
+
+       ! Stochastic Params
+
+       CAPE0 = 400 ! J / Kg
+       MOIST0 = 30 ! K
+       rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
+
+       inquire(file="input.nml",exist=nml_file_exists)
+
+       write(unit=10, nml=MCPARM)
+       if (nml_file_exists) then
+          print *, "Reading from namelist"
+          write(11,*) nstochloc
+          open(unit=38, file="input.nml")
+          read(unit=38, nml=MCPARM)
+          close(unit=38)
+       end if
+
+
+
+       IF(theta_eb_m_theta_em <= thetam) THEN
+          lambdabar=lambdas
+       ELSE IF(theta_eb_m_theta_em < thetap) THEN
+          lambdabar=a*theta_eb_m_theta_em+b
+       ELSE
+          lambdabar=1.d0
+       END IF
+
+
+
+       !    stochastic RCE parameters
+       ! TODO : refactor m0, rstoch, alpha_Bar, l, c into calculate_rce
+
+       taumult = 1.0
+       ! FMK13 Taus
+       tau01 = 1.0d0
+       tau02 = 3.0d0
+       tau10 = 1.0d0
+       tau12 = 1.0d0
+       tau20 = 3.0d0
+       tau30 = 5.0d0
+       tau23 = 3.0d0
+
+
+       tau01=tau01*taumult
+       tau02=tau02*taumult
+       tau10=tau10*taumult
+       tau12=tau12*taumult
+       tau20=tau20*taumult
+       tau30=tau30*taumult
+       tau23= tau23*taumult
+
+       nstochgl=nstochloc
+
+       call nondimensionalize_params
+       call calculate_rce()
+
 
   end subroutine init_multicloud
 
@@ -526,7 +561,64 @@ contains
     END DO
 
   END SUBROUTINE findindex
+!     birth death routine
+  SUBROUTINE   tauleap(fcloc,fdloc,fsloc,cd,cl,d,dt, nstoch)
 
+    REAL*8, INTENT(OUT)                      :: fcloc
+    REAL*8, INTENT(OUT)                      :: fdloc
+    REAL*8, INTENT(OUT)                      :: fsloc
+    REAL*8, INTENT(IN OUT)                   :: cd
+    REAL*8, INTENT(IN OUT)                   :: cl
+    REAL*8, INTENT(IN OUT)                   :: d
+    REAL*8, INTENT(IN)                       :: dt
+    REAL*8, INTENT(IN)                       :: nstoch
+
+    REAL*8 useed,ubits,dunib,dustar,duni
+    REAL*8 r01,r02,r10,r20,r23,r12,r30
+    REAL*8 time,count,t,tloc
+    REAL*8  lr01,lr02,lr10,lr20,lr23,lr12,lr30
+    REAL*8 rsum(7), rmat(7),test
+    REAL*8  diff(3), n
+    REAL*8 tlocal,timeloc,nsite, temp3
+    INTEGER :: rindex, temp2,ind,clearsky,cloud(0),diffv(7,3)
+
+    rindex=0
+
+    nsite = nstoch*nstoch
+
+    !     Conditional rates
+    CALL equildistr2(cd,cl,d,r01,r02,r10,r20,r23,r12,r30)
+    !     Define cloud state
+
+    cloud(1) = DNINT(nsite*fcloc)
+    cloud(2) = DNINT(nsite*fdloc)
+    cloud(3) = DNINT(nsite*fsloc)
+
+
+    !     define the seven possible transitions
+    diffv(1,1:3) = [1,0,0]
+    diffv(2,1:3) = [-1,0,0]
+    diffv(3,1:3) = [-1,1,0]
+    diffv(4,1:3) = [0,1,0]
+    diffv(5,1:3) = [0,-1,0]
+    diffv(6,1:3) = [0,-1,1]
+    diffv(7,1:3) = [0,0,-1]
+
+    !     We will use tau leaping
+    !     time step, DT
+    timeloc = 0
+    count = 0
+    clearsky = DNINT(nsite) - sum(cloud)
+
+
+
+    fcloc = cloud(1)/nsite
+    fdloc = cloud(2)/nsite
+    fsloc = cloud(3)/nsite
+
+
+    RETURN
+  END SUBROUTINE   tauleap
   !     birth death routine
   SUBROUTINE   birthdeath2(fcloc,fdloc,fsloc,cd,cl,d,dt, nstoch)
 
@@ -701,7 +793,11 @@ contains
 
 
        dryness=tht_eb_tht_emloc/moist0
-       CALL birthdeath2(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
+       if (stochtype == 1) then
+          CALL birthdeath2(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
+       else if (stochtype == 2) then
+          CALL tauleap(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
+       end if
 
        if (isnan(fcloc)) then
           print *, 'Error: Birthdeath yields NaN...stopping'
