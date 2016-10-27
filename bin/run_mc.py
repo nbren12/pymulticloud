@@ -71,11 +71,21 @@ if __name__ == '__main__':
     else:
         raise ValueError("Solver type `{}` is not available".format(solver_name))
 
-
-    main(run_duration=float(args['--duration']),
-         dt_out=float(args['--output_interval']),
-         restart_file = restart_file,
-         cfl=float(args['--cfl']),
-         solver=solver,
-         init_kwargs=ic_args)
+    if False:
+        import cProfile
+        cProfile.run("""
+main(run_duration=float(args['--duration']),
+    dt_out=float(args['--output_interval']),
+    restart_file = restart_file,
+    cfl=float(args['--cfl']),
+    solver=solver,
+    init_kwargs=ic_args)
+        """, filename="output.prof")
+    else:
+        main(run_duration=float(args['--duration']),
+            dt_out=float(args['--output_interval']),
+            restart_file = restart_file,
+            cfl=float(args['--cfl']),
+            solver=solver,
+            init_kwargs=ic_args)
 

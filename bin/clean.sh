@@ -1,1 +1,1 @@
-rm -rf data/ diags.pkl restart_*.pkl
+rm -rf data/ diags.pkl 

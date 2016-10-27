@@ -217,7 +217,7 @@ class MulticloudModel(object):
         soln['fs'] = fseq
 
         # initialize temperature field with small random perturbation
-        soln['t'][0] = np.random.randn(n) * .01
+        soln['t'][1] = np.random.randn(n) * .01
 
         # initialize teb
         x = np.arange(n) * dx
