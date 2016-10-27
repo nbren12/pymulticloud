@@ -36,12 +36,12 @@ module multicloud_mod
 
 
   namelist /MCPARM/ nstochloc,&
-       a,b,a0,a1,a2,a0p,a1p,a2p,alpha2,alpha3,&
+       a0,a1,a2,a0p,a1p,a2p,alpha2,alpha3,&
        lambdas,alpha_s,alpha_c,xis,xic,mu,ud,thetap,thetam,&
        tau_conv,tau_e, tau_s,tau_c,tau_r, tau_d, sdc,dtype,&
        tau01,tau02,tau10,tau12,tau20,tau30,tau23, r23value, times, taumult,&
        capebar, cape0,dry,pbar, qbar,fceq,fdeq,fseq, rstoch,&
-       theta_eb_elbar,deltac,deltac1,&
+       theta_eb_elbar,deltac1,&
        qr01,qr02,lambdabar,qcbar,dbar,&
        theta_eb_m_theta_em,m0,theta_ebs_m_theta_eb,moist0,alpha4,&
        u0, cd, lcp,&
@@ -116,7 +116,6 @@ contains
        xis=0.4D0
 
 
-       deltac=(16-3*pi*xic)/(16+3*pi*xic)
 
        theta_ebs_m_theta_eb = 10.d0 !K discrepancy between boundary layer theta_e and its saturation value
 
@@ -128,13 +127,9 @@ contains
        deltac1=0.d0
 
 
-
-
        thetap=20.d0!
        thetam=10.d0 !K thresholds moistening and drying of middle troposphere
 
-       a=(1.d0-lambdas)/(thetap-thetam)
-       b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
 
 
        ! Stochastic Params
@@ -143,6 +138,16 @@ contains
        MOIST0 = 30 ! K
        rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
 
+       ! FMK13 Taus
+       tau01 = 1.0d0
+       tau02 = 3.0d0
+       tau10 = 1.0d0
+       tau12 = 1.0d0
+       tau20 = 3.0d0
+       tau30 = 5.0d0
+       tau23 = 3.0d0
+
+       taumult = 1.0
 
        inquire(file="input.nml",exist=nml_file_exists)
        if (present(unit)) then
@@ -156,7 +161,10 @@ contains
 
        write(11, nml=MCPARM)
 
+       a=(1.d0-lambdas)/(thetap-thetam)
+       b=lambdas-a*thetam            !linear fit coefficients of LAMBDA
 
+       deltac=(16-3*pi*xic)/(16+3*pi*xic)
 
        IF(theta_eb_m_theta_em <= thetam) THEN
           lambdabar=lambdas
@@ -171,15 +179,6 @@ contains
        !    stochastic RCE parameters
        ! TODO : refactor m0, rstoch, alpha_Bar, l, c into calculate_rce
 
-       taumult = 1.0
-       ! FMK13 Taus
-       tau01 = 1.0d0
-       tau02 = 3.0d0
-       tau10 = 1.0d0
-       tau12 = 1.0d0
-       tau20 = 3.0d0
-       tau30 = 5.0d0
-       tau23 = 3.0d0
 
 
        tau01=tau01*taumult
