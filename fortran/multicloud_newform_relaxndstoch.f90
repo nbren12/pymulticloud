@@ -24,8 +24,8 @@ REAL*8 u1(n),u2(n),theta1(n),theta2(n),  &
 REAL*8 uc(2*ntrunc+1,-1:n+2)
 REAL*8 thteb_st(n), asst,lsst
 
-
-
+real(8) uca(2*ntrunc+1, n)
+integer n_avg
 
 
 
@@ -202,38 +202,16 @@ CALL out_amp(u1,u2,theta1,theta2,theta_eb,q,hs,hc,n,time)
 WRITE(35,*) 'BACK to MAIN'
 
 
+n_avg = 0
 twave_count= 0.d0
-DO i=1,n
-  
-  u1_av(i) = 0.d0
-  u2_av(i) = 0.d0
-  tht1_av(i) = 0.d0
-  tht2_av(i) = 0.d0
-  tht_eb_av(i) = 0.d0
-  q_av(i) = 0.d0
-  hs_av(i) = 0.d0
-  hc_av(i) = 0.d0
-  pr0_av(i)=0.d0
-  hd_av(i)=0.d0
-  lambda_av(i)=0.d0
-  hds(i)=0.d0
-  hs(i)=0.d0
-  u1a(i)=0.d0
-  u2a(i)=0.d0
-  theta1a(i)=0.d0
-  theta2a(i)=0.d0
-  theta_eba(i)=0.d0
-  qa(i)=0.d0
-  hsa(i)=0.d0
-  hca(i)=0.d0
-  hda(i)=0.d0
-  fclsa(i)=0.d0
-  fdlsa(i)=0.d0
-  fslsa(i)=0.d0
-  
-END DO
-
-
+uca = 0d0
+theta_eba =0d0
+hda = 0d0
+hca = 0d0
+hsa = 0d0
+fclsa = 0d0
+fdlsa = 0d0
+fslsa = 0d0
 
 
 
@@ -406,6 +384,17 @@ END IF
 !                                                         Snapshot Output                                                          !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+uca =uca + uc(:,1:n)
+theta_eba =theta_eba +  theta_eb
+hca =hca + hc
+hsa =hsa + hs
+hda =hda + hd
+fclsa =fclsa + fcls
+fdlsa =fdlsa + fdls
+fslsa =fslsa + fdls
+n_avg = n_avg + 1
+
+
 
 IF(time >= (twave_count2+1)*tenergy) THEN
   
@@ -413,7 +402,7 @@ IF(time >= (twave_count2+1)*tenergy) THEN
   
   if (BINARY_OUTPUT) then
 
-     print *,  'outputing snapshot at time', time * T / day
+     print '(A, F8.2, A, I4)',  'outputing snapshot at time ', time * T / day, ' n_avg', n_avg
      ! WRITE(unit=SNAPSHOT_ID) time *T / day, c*u1, c*u2,&
      !      alpha_bar *theta1, alpha_bar * theta2,  &
      !      alpha_bar*theta_eb, &
@@ -425,18 +414,44 @@ IF(time >= (twave_count2+1)*tenergy) THEN
 
      open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
      write(ufid) time * T/ day
-     write(ufid) uc(1:ntrunc,1:n) * c
-     write(ufid) uc(ntrunc+1:2*ntrunc,1:n) * alpha_bar
-     write(ufid) uc(2*ntrunc+1,1:n) * alpha_bar
-     write(ufid) theta_eb * alpha_bar
-     write(ufid) hc * alpha_bar/ (T / day)
-     write(ufid) hd * alpha_bar/ (T / day)
-     write(ufid) hs * alpha_bar/ (T / day)
-     write(ufid) fcls
-     write(ufid) fdls
-     write(ufid) fsls
+     write(ufid) uca(1:ntrunc,1:n) * c/n_avg
+     write(ufid) uca(ntrunc+1:2*ntrunc,1:n) * alpha_bar/n_avg
+     write(ufid) uca(2*ntrunc+1,1:n) * alpha_bar/n_avg
+     write(ufid) theta_eba * alpha_bar/n_avg
+     write(ufid) hca * alpha_bar/ (T / day)/n_avg
+     write(ufid) hda * alpha_bar/ (T / day)/n_avg
+     write(ufid) hsa * alpha_bar/ (T / day)/n_avg
+     write(ufid) fclsa/n_avg
+     write(ufid) fdlsa/n_avg
+     write(ufid) fslsa/n_avg
      write(ufid) scmt
      close(ufid)
+
+     n_avg = 0
+     twave_count= 0.d0
+     uca = 0d0
+     theta_eba =0d0
+     hca = 0d0
+     hda = 0.d0
+     hsa = 0d0
+     fclsa = 0d0
+     fdlsa = 0d0
+     fslsa = 0d0
+
+     ! open(unit=ufid, file='real.bin', position='append', status='unknown', form='unformatted', access='stream')
+     ! write(ufid) time * T/ day
+     ! write(ufid) uc(1:ntrunc,1:n) * c
+     ! write(ufid) uc(ntrunc+1:2*ntrunc,1:n) * alpha_bar
+     ! write(ufid) uc(2*ntrunc+1,1:n) * alpha_bar
+     ! write(ufid) theta_eb * alpha_bar
+     ! write(ufid) hc * alpha_bar/ (T / day)
+     ! write(ufid) hd * alpha_bar/ (T / day)
+     ! write(ufid) hs * alpha_bar/ (T / day)
+     ! write(ufid) fcls
+     ! write(ufid) fdls
+     ! write(ufid) fsls
+     ! write(ufid) scmt
+     ! close(ufid)
 
   else
       DO i=1,n
@@ -456,47 +471,6 @@ IF(time >= (twave_count2+1)*tenergy) THEN
 END IF
 
 
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!                                                     Update Time Average data                                                     !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-IF((time+twave_outa-tend) >= (twave_count2a+1)*tenergya) THEN
-  
-  twave_count2a=twave_count2a+1
-  twa=twave_count2a
-  
-  DO i=1,n
-    
-    u1a(i)=u1a(i)+u1(i)
-    u2a(i)=u2a(i)+u2(i)
-    theta1a(i)=theta1a(i)+theta1(i)
-    theta2a(i)=theta2a(i)+theta2(i)
-    theta_eba(i)=theta_eba(i)+theta_eb(i)
-    qa(i)=qa(i)+q(i)
-    hsa(i)=hsa(i)+hs(i)
-    hca(i)=hca(i)+hc(i)
-    hda(i)=hda(i)+hd(i)
-    fclsa(i)=fclsa(i)+fcls(i)
-    fdlsa(i)=fdlsa(i)+fdls(i)
-    fslsa(i)=fslsa(i)+fsls(i)
-  END DO
-  
-  
-  
-END IF
-
-
-
-! IF(time >= (iout+1)*tout) THEN
-  
-!   WRITE(35,*)'Time step=', 2*dt*t/minute,' minutes',' iter=',iter
-!   iout=iout+1
-!   WRITE(35,*)'iout=',iout,' time=',time*t/hour,' hours'
-!   CALL output(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n,iout)
-  
-! END IF
 IF(time < tend) GO TO 10
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                                                    End Iterations...Finish up                                                    !
@@ -516,7 +490,6 @@ WRITE(35,*)'***********************END**************************'
 !     save avg
 
 DO i=1,n
-  
   WRITE(18,102) u1a(i)/twa,u2a(i)/twa, theta1a(i)/twa,theta2a(i)/twa,  &
       theta_eba(i)/twa, qa(i)/twa,hsa(i)/twa,hca(i)/twa,hda(i)/twa,  &
       fclsa(i)/twa,fdlsa(i)/twa,fslsa(i)/twa
