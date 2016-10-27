@@ -36,7 +36,7 @@ module multicloud_mod
 
 
   namelist /MCPARM/ nstochloc,&
-       a0,a1,a2,a0p,a1p,a2p,alpha2,alpha3,&
+       a0,a1,a0p,a1p,a2p,alpha2,alpha3,&
        lambdas,alpha_s,alpha_c,xis,xic,mu,ud,thetap,thetam,&
        tau_conv,tau_e, tau_s,tau_c,tau_r, tau_d, sdc,dtype,&
        tau01,tau02,tau10,tau12,tau20,tau30,tau23, r23value, times, taumult,&
@@ -68,7 +68,6 @@ contains
        stochtype = 1
 
        a1=0.5D0
-       a2=1.d0 -a1
        a0=2.d0
 
        a1p=1.d0  !Coefficient  of theta_eb in low CAPE, should be 1
@@ -179,6 +178,7 @@ contains
        !    stochastic RCE parameters
        ! TODO : refactor m0, rstoch, alpha_Bar, l, c into calculate_rce
 
+       a2=1.d0 -a1
 
 
        tau01=tau01*taumult

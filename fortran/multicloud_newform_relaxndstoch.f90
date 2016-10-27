@@ -29,9 +29,8 @@ REAL*8 thteb_st(n), asst,lsst
 
 
 
-REAL*8 q_tld,alpha_tld,lmd_tld,tempg
-
-PARAMETER(alpha_tld=0.1D0,lmd_tld=0.8D0,q_tld=0.9D0)
+REAL*8 q_tld,alpha_tld,lmd_tld,nonlin_tld, tempg
+namelist /moistdyn/ q_tld,alpha_tld,lmd_tld,nonlin_tld
 
 REAL*8 dt,dx,p, umax,time,dt_max,twave_count2
 REAL*8 theta_d,tend,tout,tenergy
@@ -76,11 +75,21 @@ call init_cmt(n, ntrunc)
 call init_multicloud(8)
 call get_eqcloudfrac(fceq, fdeq, fseq)
 
+! init dynamics
+nonlin_tld = 1.0d0
+alpha_tld=0.1D0
+lmd_tld=0.8D0
+q_tld=0.9D0
+read(unit=8, nml=moistdyn)
+
+
 DO i=1,n
   fcls(i)=fceq;
   fdls(i)=fdeq;
   fsls(i)=fseq;
 END DO
+
+print *, 'cong, deep, strat eq fracs', fceq, fdeq, fseq
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -318,7 +327,7 @@ DO i=1,n
       uc(2*ntrunc+1,i) = q(i)
 END DO
 
-CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
+CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, nonlin_tld, ntrunc)
 
 call vertical_advection_driver(uc, dx, 2d0*dt, n, ntrunc)
 
@@ -368,7 +377,7 @@ else
       end do
    end do
 end if
-CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
+CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, nonlin_tld, ntrunc)
 
 ! copy output to flux array for stochastic multicloud step
 ! readdjust temperature to FMK13 convection :  theta_m -> m theta_m

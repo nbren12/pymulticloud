@@ -97,11 +97,11 @@ contains
 
   end subroutine vertical_advection_driver
 
-  subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
+  subroutine central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, nonlin_tld, ntrunc)
     implicit none
     integer n, i,j, ntrunc
 
-    real(8) uc(2*ntrunc+1,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, fc(2*ntrunc+1,-1:n+2)
+    real(8) uc(2*ntrunc+1,-1:n+2), dx,dt,q_tld,alpha_tld,lmd_tld, nonlin_tld, fc(2*ntrunc+1,-1:n+2)
     real(8) ux(2*ntrunc+1,0:n+1),lmd, lmd_2,u_stag(2*ntrunc+1,-1:n+2) ,nlt
     nlt=1.d0                  ! nonlinearity set to zero.
     lmd= dt/dx
@@ -136,7 +136,7 @@ contains
 
 
     do i=-1,n+2
-       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld)
+       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld, nonlin_tld)
     end do
     call slopes(fc, ux)
 
@@ -158,7 +158,7 @@ contains
     call periodic_bc(uc, 2)
 
     do i=-1,n+2
-       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld)
+       call flux(uc(:,i), fc(:,i), q_tld,alpha_tld,lmd_tld, nonlin_tld)
     end do
 
 
@@ -196,16 +196,20 @@ contains
     return
   end subroutine central_scheme
 
-  subroutine flux(u, f, q_tld,alpha_tld,lmd_tld)
+  subroutine flux(u, f, q_tld,alpha_tld,lmd_tld, nonlin_tld)
 
     real(8), intent(in) :: u(:)
     real(8), intent(out):: f(:)
     real*8 q_tld,alpha_tld,lmd_tld
+    real(8)  :: nonlin_tld
 
 
     integer m, i, L
     real(8), dimension((size(u,1)-1)/2) :: ftheta, theta
     real(8) ::  fq, q
+
+
+
 
 
     L = ( size(u,1)-1 )/2
@@ -262,7 +266,7 @@ contains
     end do
 
     ! moisture equation
-    fq  = q_tld * (u(1) + lmd_tld * u(2)) + q *(u(1) + alpha_tld * u(2))
+    fq  = q_tld * (u(1) + lmd_tld * u(2)) + nonlin_tld * q *(u(1) + alpha_tld * u(2))
 
 
     do m=1,L
