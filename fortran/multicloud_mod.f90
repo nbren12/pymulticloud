@@ -54,8 +54,9 @@ contains
     b = fdeq
     c = fseq
   end subroutine get_eqcloudfrac
-  subroutine init_multicloud()
+  subroutine init_multicloud(unit)
     logical nml_file_exists
+    integer, optional :: unit
 
        nstochloc = 30
        pi=4*DATAN(1.d0)
@@ -142,16 +143,18 @@ contains
        MOIST0 = 30 ! K
        rstoch = 2 * zp* cp * gammam / theta0 *alpha_bar / c /c
 
-       inquire(file="input.nml",exist=nml_file_exists)
 
-       write(unit=10, nml=MCPARM)
-       if (nml_file_exists) then
-          print *, "Reading from namelist"
-          write(11,*) nstochloc
+       inquire(file="input.nml",exist=nml_file_exists)
+       if (present(unit)) then
+          read(unit=unit, nml=MCPARM)
+       else if (nml_file_exists) then
+          write(unit=10, nml=MCPARM)
           open(unit=38, file="input.nml")
           read(unit=38, nml=MCPARM)
           close(unit=38)
        end if
+
+       write(11, nml=MCPARM)
 
 
 
@@ -580,7 +583,9 @@ contains
     REAL*8 rsum(7), rmat(7),test
     REAL*8  diff(3), n
     REAL*8 tlocal,timeloc,nsite, temp3
-    INTEGER :: rindex, temp2,ind,clearsky,cloud(0),diffv(7,3)
+    INTEGER :: rindex, temp2,ind,clearsky,cloud(3),diffv(7,3)
+    integer :: ignpoi, nevent(7), i
+    real(4) mu
 
     rindex=0
 
@@ -610,11 +615,33 @@ contains
     count = 0
     clearsky = DNINT(nsite) - sum(cloud)
 
+    lr01 = r01*clearsky
+    lr10 = r10*cloud(1)
+    lr12 = r12*cloud(1)
+    lr02 = r02*clearsky
+    lr20 = r20*cloud(2)
+    lr23 = r23*cloud(2)
+    lr30 = r30*cloud(3)
+
+    rmat = [lr01, lr10, lr12, lr02, lr20, lr23, lr30]
+
+    do i =1,7
+       mu = rmat(i)/dt
+       print *, mu
+       if (mu > 0 ) then
+          nevent(i) = ignpoi(mu)
+       else
+          nevent(i) = 0
+       end if
+    end do
+    cloud(1) = cloud(1) + nevent(1) - nevent(2) - nevent(3)
+    cloud(2) = cloud(2) + nevent(3) + nevent(4) - nevent(5) - nevent(6)
+    cloud(3) = cloud(3) + nevent(6) - nevent(7)
 
 
-    fcloc = cloud(1)/nsite
-    fdloc = cloud(2)/nsite
-    fsloc = cloud(3)/nsite
+    fcloc = max(0.0, cloud(1)/ nsite)
+    fdloc = max(0.0, cloud(2)/ nsite)
+    fsloc = max(0.0, cloud(3)/ nsite)
 
 
     RETURN

@@ -70,9 +70,10 @@ namelist /data/ tend, tenergy, asst, toggle_nonlinear, stochastic_cmt
 
 
 
+open(8, file='input.nml')
 call init_param()
 call init_cmt(n, ntrunc)
-call init_multicloud
+call init_multicloud(8)
 call get_eqcloudfrac(fceq, fdeq, fseq)
 
 DO i=1,n
@@ -154,7 +155,6 @@ lsst=EQ/l/8;
 ! open(8, file='input.nml', status='new')
 ! write(8,nml=data)
 ! close(8)
-open(8, file='input.nml', status='old')
 read(8,nml=data)
 
 tend = tend * day / t
@@ -165,7 +165,6 @@ print *, 'total run time', tend*t/day,'days'
 print *, 'asst=', asst
 print *, 'toggle_nonlinear=', toggle_nonlinear
 print *, 'stochastic_cmt=', stochastic_cmt
-close(8)
 !        SEPT in BD (non dim units)
 
 OPEN(UNIT=36,FILE='sst',STATUS='unknown')
@@ -323,15 +322,6 @@ CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
 
 call vertical_advection_driver(uc, dx, 2d0*dt, n, ntrunc)
 
-if (.not. cmt_on) then
-   ! damping (comment beacuse it is inside cmt)
-   do i=1,n
-      do j = 1,ntrunc
-         uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
-      end do
-   end do
-
-end if
 
 ! split-in-time vertical advection
 
@@ -359,7 +349,6 @@ CALL range_kuttas(u1,u2,theta1,theta2,theta_eb,q,hs,hc,hd,n  &
 dt=tempg
 
 
-
 ! unpack data from u vector
 ! adjust temperature from FMK13 convection : m  theta_m -> theta_m
 DO i=1,n
@@ -370,7 +359,15 @@ DO i=1,n
    uc(2*ntrunc+1,i) = q(i)
 END DO
 
-if (cmt_on) call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
+if (cmt_on) then
+  call updatecmt(uc(1:ntrunc,1:n), scmt, hd, hc, hs, 2d0*dt)
+else
+   do i=1,n
+      do j = 1,ntrunc
+         uc(j,i) = dexp(-ud*2d0*dt) * uc(j,i)
+      end do
+   end do
+end if
 CALL central_scheme(uc,dx,dt,n,q_tld,alpha_tld,lmd_tld, ntrunc)
 
 ! copy output to flux array for stochastic multicloud step

@@ -4,6 +4,7 @@ Usage:
   bin2nc.py plot FILE FIELD
   bin2nc.py report FILE
   bin2nc.py column FILE
+  bin2nc.py nc <in> <out>
   bin2nc.py FILE
 
 Arguments:
@@ -270,5 +271,8 @@ if __name__ == '__main__':
         report(args['FILE'])
     elif args['column']:
         column_report(args['FILE'])
+    elif args['nc']:
+        head, data = read_output(args['<in>'])
+        output2xarray(head, data).to_netcdf(args['<out>'])
     else:
         print(read_output(args['FILE'])[0])

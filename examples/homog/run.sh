@@ -3,11 +3,16 @@ make -C ../../ mcnde
 cp ../../fortran/mcnde .
 
 cat <<EOF > input.nml
+&MCPARM
+nstochloc = 60,
+stochtype = 1,
+taumult = .25,
+/
 &DATA
-TEND    =   100.0
+TEND    =   400.0
 TENERGY =  6.0,
 ASST    =  0.000000000000000     
-toggle_nonlinear = .true.
+toggle_nonlinear = .false.
 stochastic_cmt = .false.
 /
 EOF
