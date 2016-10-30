@@ -49,6 +49,25 @@ class ColumnMulticloudModel(object):
             return out
 
     def run(self, d=None, nstep=100000, ioskip=100, dt=60 / 8 / 3600):
+        """Run the stochastic multicloud model as a column model
+
+        Parameters
+        ----------
+        d: dict, optional
+            initial condition. 0 is default.
+        nstep: int, optional
+            number of time steps
+        ioskip: int, optional
+            output storage interval. Default 100.
+        dt: float, optional
+            time step size in nondimensional units. Default is 60 seconds.
+
+        Returns
+        -------
+        dict
+            Dictionary of stored prognostic and diagnostic variables
+
+        """
         if d is None:
             d = dict(zip(self.prog_vars, self.prog_vals))
 
@@ -70,6 +89,12 @@ class ColumnMulticloudModel(object):
         return d_output
 
     def run_dataframe(self, *args, **kwargs):
+        """Run multicloud model and return pandas dataframe
+
+        See Also
+        --------
+        run
+        """
         import pandas as pd
         d_output = self.run(*args, **kwargs)
 
