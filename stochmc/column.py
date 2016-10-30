@@ -101,16 +101,12 @@ class ColumnMulticloudModel(object):
         return pd.DataFrame.from_dict(d_output).set_index('time')
 
 
-def main():
-    import pandas as pd
+def summary_plot(df):
+    """Plot summary of column model output"""
     from gnl.plots import plotiter
-
-    col = ColumnMulticloudModel()
-    df = col.run_dataframe(nstep=100000)
-
     pt = plotiter(
         [('fracs', ['fc', 'fd', 'fs']), ('heat', ['hc', 'hd', 'hs']),
-        ('temp', ['t1', 't2', 'teb', 'q']), ('hd and q', ['hd', 'hs', 'q'])],
+         ('temp', ['t1', 't2', 'teb', 'q']), ('hd and q', ['hd', 'hs', 'q'])],
         yield_axis=True,
         ncol=1,
         aspect=.2,
@@ -118,7 +114,18 @@ def main():
 
     for (plotname, fields), ax in pt:
         df[fields].plot(ax=ax)
+
+
+def main():
+    import pandas as pd
+    from gnl.plots import plotiter
+
+    col = ColumnMulticloudModel()
+    df = col.run_dataframe(nstep=100000)
+
+    summary_plot(df)
     plt.savefig("out.pdf")
+
 
 if __name__ == '__main__':
     main()
