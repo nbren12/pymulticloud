@@ -32,14 +32,17 @@ def ldd_linux(libname):
     return libraries
 
 
-def _open_library():
+def _open_library(root="../../"):
     """Open the multicloud library
 
     Loads the linked gfotran path rather than the anaconda one
     """
 
-    library_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
+    # location of library
+    d = os.path.dirname(os.path.abspath(__file__))
+    fortran_lib_root = os.path.abspath(os.path.join(d, root, "fortran"))
+    
+    library_path = os.path.join(fortran_lib_root,
         'libmulticloud' + _uname_library_extensions[os.uname().sysname])
     logger.debug("Opening library at {0}".format(library_path))
 

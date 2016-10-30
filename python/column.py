@@ -7,7 +7,7 @@ Parameters of the mc model can be changed via input.nml
 """
 import matplotlib.pyplot as plt
 import numpy as np
-from fortran import multicloud
+from .wrapper import multicloud
 from collections import defaultdict
 
 

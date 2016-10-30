@@ -15,7 +15,7 @@ from math import sqrt
 
 # this import needs to happen before the others for some reason. This is
 # probably a conflict with numba.
-import fortran.multicloud as mc
+from ..wrapper import multicloud as mc
 
 from .tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
