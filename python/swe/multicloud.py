@@ -23,6 +23,8 @@ from .timestepping import steps
 logger = logging.getLogger(__file__)
 
 class Soln(object):
+    """Object for storing the state of the system
+    """
     L = 3
     variables = ['q', 'teb', 'hs', 'tebst', 'fc', 'fd', 'fs', 'hc', 'hd', 'lmd']
 
@@ -159,6 +161,7 @@ def nonlinear_source(u, T, dx, L=3):
     return dict(u=fu, t=ft)
 
 class MulticloudModel(object):
+    """Base MulticloudModel solver class"""
     diags = {}
 
     def __init__(self):
@@ -239,6 +242,7 @@ class MulticloudModel(object):
         return not np.any(np.isnan(soln))
 
 class MulticloudModelDissipation(MulticloudModel):
+    """Multicloud Model with dissipation"""
 
     def __init__(self, *args, dissipation=.1, **kwargs):
         "docstring"
@@ -248,7 +252,6 @@ class MulticloudModelDissipation(MulticloudModel):
         self.dissipation = dissipation
 
     def onestep(self, soln, time, dt, dx, *args, **kwargs):
-        """Perform a single time step of the multicloud model"""
         from functools import partial
         soln = super(MulticloudModelDissipation, self)\
                .onestep(soln, time, dt, dx, *args, **kwargs)
@@ -261,7 +264,7 @@ class MulticloudModelDissipation(MulticloudModel):
 
 
 class MulticloudModelNonlinear(MulticloudModelDissipation):
-
+    """Multicloud with Nonlinear advection"""
     def __init__(self, *args, q_tld=.9, **kwargs):
         "docstring"
         super(MulticloudModelNonlinear, self).__init__(*args, **kwargs)
@@ -287,7 +290,6 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
         return soln
 
     def onestep(self, soln, time, dt, dx, *args, **kwargs):
-        """Perform a single time step of the multicloud model"""
         soln = super(MulticloudModelNonlinear, self)\
                .onestep(soln, time, dt, dx, f=self._f, *args, **kwargs)
 
