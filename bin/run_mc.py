@@ -27,8 +27,8 @@ sys.path.insert(0, root_dir)
 
 # this needs to be imported before python. not sure why
 # import fortran.multicloud
-from python.swe.multicloud import main
-import python.swe.multicloud
+from stochmc.swe.multicloud import main
+import stochmc.swe.multicloud
 
 
 def args_to_dict(args):
@@ -56,18 +56,18 @@ if __name__ == '__main__':
     ic_args =args_to_dict(args['--init-args'])
 
     if solver_name == 'dissip':
-        solver = python.swe.multicloud.\
+        solver = stochmc.swe.multicloud.\
                  MulticloudModelDissipation(**solver_args)
     elif solver_name =='cmt':
-        import python.cmt
-        solver = python.cmt.CmtSolver()
+        import stochmc.cmt
+        solver = stochmc.cmt.CmtSolver()
     elif solver_name =='cmtnonlin':
-        import python.cmt
-        mcsolver = python.swe.multicloud.\
+        import stochmc.cmt
+        mcsolver = stochmc.swe.multicloud.\
                    MulticloudModelNonlinear(dissipation=0.0, **solver_args)
-        solver = python.cmt.CmtSolver(mcsolver=mcsolver)
+        solver = stochmc.cmt.CmtSolver(mcsolver=mcsolver)
     elif solver_name == 'nonlin':
-        solver = python.swe.multicloud.MulticloudModelNonlinear(**solver_args)
+        solver = stochmc.swe.multicloud.MulticloudModelNonlinear(**solver_args)
     else:
         raise ValueError("Solver type `{}` is not available".format(solver_name))
 

@@ -11,8 +11,8 @@ from gnl.plots import *
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, root_dir)
 
-from python.read import read_data, read_diags, load_xarray
-from python.cmt import calc_du
+from stochmc.read import read_data, read_diags, load_xarray
+from stochmc.cmt import calc_du
 
 data  = load_xarray("data/", "diags.pkl")
 
