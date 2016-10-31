@@ -57,7 +57,7 @@ REAL*8 u1a(n),u2a(n),theta1a(n),theta2a(n),theta_eba(n)
 REAL*8 qa(n),hsa(n),hca(n),hda(n),fclsa(n),fdlsa(n),fslsa(n)
 REAL*8 twave_outa,twave_count2a,tenergya,twa
 
-namelist /data/ tend, tenergy, asst, toggle_nonlinear, stochastic_cmt
+namelist /data/ tend, tenergy, asst, toggle_nonlinear, stochastic_cmt, dx
 
 
 111  CONTINUE
@@ -156,7 +156,8 @@ WRITE(35,*)'DX*L=',dx*l,' P*L=',p*l
 
 !       LSST : width of warm pool.
 
-asst=0.5d0;
+asst=0.2d0;
+lsst=EQ/l/8;
 lsst=EQ/l/8;
 
 
@@ -165,6 +166,7 @@ lsst=EQ/l/8;
 ! write(8,nml=data)
 ! close(8)
 read(8,nml=data)
+dx = km * dx / l
 
 tend = tend * day / t
 tenergy = tenergy * hour/t
@@ -185,7 +187,9 @@ DO i=1,n
   ELSE
     thteb_st(i)=-asst*theta_ebs_m_theta_eb;
   END IF
-  WRITE(36,*) thteb_st(i)
+
+  thteb_st(i) = -asst * cos(i*dx*l/Eq*2*pi)
+  WRITE(36,*) i*dx *l, thteb_st(i)
 END DO
 
 
@@ -624,6 +628,7 @@ END SUBROUTINE out_amp
 
 
 SUBROUTINE initial_data(u1,u2,theta1,theta2,theta_eb,q,hs,hc, n,dx,l,p)
+  use param_mod, only : EQ
 IMPLICIT NONE
 
 REAL*8, INTENT(OUT)                      :: u1(n)
@@ -635,7 +640,7 @@ REAL*8, INTENT(OUT)                      :: q(n)
 REAL*8, INTENT(OUT)                      :: hs(n)
 REAL*8, INTENT(OUT)                      :: hc(n)
 INTEGER, INTENT(IN)                      :: n
-REAL*8, INTENT(OUT)                      :: dx
+REAL*8, INTENT(in)                      :: dx
 REAL*8, INTENT(IN)                       :: l
 REAL*8, INTENT(OUT)                      :: p
 INTEGER :: i, k, kn,idata,j,n1
@@ -692,8 +697,6 @@ READ(21,*) hcre,hcim
 
 
 CLOSE(21)
-p= 40000000.d0/l/k
-dx=p/n
 WRITE(35,*)'Wavelength = ', p*l/1000.d0, ' km'
 DO i=1,n
   x= (i-1)*dx*2*pi/p
@@ -762,7 +765,6 @@ n1=n/kn
 
 
 p= 40000000.d0/l/kn
-dx=p/n1
 
 WRITE(35,*)' Small Wavelength = ', p*l/1000.d0, ' km'
 WRITE(35,*)' Large Wavelength = ', k*p*l/1000.d0, ' km'
@@ -794,7 +796,6 @@ n1=n/k
 
 
 p= 40000000.d0/l/k
-dx=p/n1
 
 WRITE(35,*)' Small Wavelength = ', p*l/1000.d0, ' km'
 WRITE(35,*)' Large Wavelength = ', k*p*l/1000.d0, ' km'
@@ -832,9 +833,6 @@ GO TO 40
 file_name='doutput01'
 !      print*,'ENTER DOMAIN SIZE (KM): '
 !      READ*,P
-p=40000
-p= p*1000/l
-dx=p/n
 
 OPEN(UNIT=21,FILE=file_name,STATUS='OLD')
 

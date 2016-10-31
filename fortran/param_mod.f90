@@ -21,7 +21,8 @@ contains
     theta0=300.d0 !K background  reference temperature
     g=9.8D0 !m/s gravitational acceleration
     beta=2*omega/r      !1/s/m
-    EQ=40000*km!  Earth's peremeter at the Equator
+    ! EQ=40000*km!  Earth's peremeter at the Equator
+    EQ=8000*km!  Earth's peremeter at the Equator
     n2=.0001D0         !Vaissala buoyancy frequency squared
 
 
