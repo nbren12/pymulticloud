@@ -31,6 +31,8 @@ module multicloud_mod
 
   real(8) u0, cd, lcp
 
+  real(8) hcdowndraft
+
   ! stochastic integrator
   integer :: stochtype
 
@@ -45,7 +47,7 @@ module multicloud_mod
        qr01,qr02,lambdabar,qcbar,dbar,&
        theta_eb_m_theta_em,m0,theta_ebs_m_theta_eb,moist0,alpha4,&
        u0, cd, lcp,&
-       stochtype
+       stochtype, hcdowndraft
 
 contains
   subroutine get_eqcloudfrac(a, b, c)
@@ -113,6 +115,8 @@ contains
        mu= 0.25D0   ! contribution of lower  tropospheric cooling (H_s - H_c) to downdrafts
        xic=0.0D0
        xis=0.4D0
+
+       hcdowndraft = 1.0
 
 
 
@@ -399,7 +403,7 @@ contains
 
        ec=deltac*m0*tht_eb_tht_el*(two_sqrt2/pi)*(hc(i)/qr01);
        ec=deltac1*ec
-       d = DMAX1(0.d0,(1.d0 + mu*(hs(i)- hc(i))/qr01) )*m0 *tht_eb_tht_em
+       d = DMAX1(0.d0,(1.d0 + mu*(hs(i)- hc(i) * hcdowndraft)/qr01) )*m0 *tht_eb_tht_em
        d=d+DMAX1(ec,0.d0)
 
        pr=  hd(i) + xic*hc(i) + xis*hs(i)
@@ -450,7 +454,7 @@ contains
        ec=deltac*m0*tht_eb_tht_el*(two_sqrt2/pi)*(hc(i)/qr01);
        ec=deltac1*ec
 
-       d = DMAX1(0.d0,(1.d0 + mu*( hs(i)-hc(i))/qr01))*m0 *tht_eb_tht_em
+       d = DMAX1(0.d0,(1.d0 + mu*( hs(i)-hcdowndraft*hc(i))/qr01))*m0 *tht_eb_tht_em
 
        d=d+DMAX1(ec,0.d0)
 
