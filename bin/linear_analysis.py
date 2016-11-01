@@ -103,6 +103,7 @@ def source_matrix():
     """
     alpha = .1
     tau_conv =  2 * hour / T
+    tau_conv =  10 * hour / T
     tau_r    = 50 * day / T
     tau_c    =1 *hour /T
     tau_s    = 3 * hour /T
@@ -123,7 +124,7 @@ def source_matrix():
     theta_ebs_m_theta_eb = 10.0 / alpha_bar
     theta_eb_m_theta_em = 11.0 / alpha_bar
 
-    xic = -0.5
+    xic = 0.0
     xis = 0.4
 
     # xis =.5
@@ -135,8 +136,8 @@ def source_matrix():
     alpha_c = 0.1
 
     mu = 0.35
-    mu = 3
-    hcdowndraft=0
+    mu = .25
+    hcdowndraft=1
 
 
     qr01 = 1.0 /day * T / alpha_bar
