@@ -110,6 +110,7 @@ def summary_plot(df):
         yield_axis=True,
         ncol=1,
         aspect=.2,
+        sharex=True,
         w=10)
 
     for (plotname, fields), ax in pt:
