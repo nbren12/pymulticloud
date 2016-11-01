@@ -31,7 +31,7 @@ module multicloud_mod
 
   real(8) u0, cd, lcp
 
-  real(8) hcdowndraft
+  real(8) hcdowndraft  ! coefficient of H_c in downdraft formulation
 
   ! stochastic integrator
   integer :: stochtype
