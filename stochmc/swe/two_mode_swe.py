@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from numpy import sqrt
 from scipy.ndimage import correlate1d
-from .tadmor_1d import periodic_bc, central_scheme
+from ..tadmor.tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
 logging.basicConfig(level=logging.INFO)

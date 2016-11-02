@@ -17,7 +17,7 @@ from math import sqrt
 # probably a conflict with numba.
 from ..wrapper import multicloud as mc
 
-from .tadmor_1d import periodic_bc, central_scheme
+from ..tadmor.tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
 
 logger = logging.getLogger(__file__)
