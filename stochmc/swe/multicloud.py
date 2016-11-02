@@ -16,6 +16,7 @@ from math import sqrt
 # this import needs to happen before the others for some reason. This is
 # probably a conflict with numba.
 from ..wrapper import multicloud as mc
+from ..io import NetCDF4Writer
 
 from ..tadmor.tadmor_1d import periodic_bc, central_scheme
 from .timestepping import steps
@@ -58,6 +59,21 @@ class Soln(object):
     def comm(self):
         periodic_bc(self._data)
 
+
+    @property
+    def vars(self):
+        """Iterator of variable dimension information
+
+        This is useful for output to netcdf.
+        """
+
+        yield 'u', ['m', 'x'], self['u'][:,2:-2]
+        yield 't', ['m', 'x'], self['t'][:,2:-2]
+
+        for v in self.variables:
+            yield v, ['x'], self[v][2:-2]
+
+        return
 
     @property
     def q(self):
@@ -207,7 +223,7 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5, lsst=10000 / 1500, **kwargs):
+    def init_mc(self, n=1000, dx=40 / 1500, asst=0.5*10/15, lsst=10000 / 1500, **kwargs):
 
         soln = Soln(n, **kwargs)
 
@@ -346,15 +362,17 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None,
 
     t_out = t_start + dt_out
 
+    grid = {
+        'x': dx*np.arange(len(soln['teb'])-4),
+        'm': np.arange(soln['u'].shape[0])
+    }
+
     # allocate output buffer
-    nbuf = 10
-    arr = solver.record_array_soln(soln, t_start)
-    output = np.zeros(nbuf, dtype=arr.dtype)
+    writer = NetCDF4Writer(grid)
 
     diags = []
 
     # include initial data
-    output[0] = arr
     i_out = 1
 
     datadir = "data"
@@ -378,16 +396,12 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None,
         solver.reset_avg()
 
         if t > t_out:
-            logger.info("Storing output data at t={0}".format(t))
-            output[i_out] = solver.record_array_soln(soln, t)
-            t_out += dt_out
-            i_out += 1
+            writer.collect(t, soln.vars)
+            t_out, i_out  = t_out + dt_out, i_out + 1
 
-            if i_out >= nbuf:
-                dump_output_file(t, output, datadir)
-                i_out = 0
 
-    dump_output_file(t, output[:i_out], datadir)
+    writer.collect(t, soln.vars)
+    writer.finish()
     save_restart_file("restart_" + str(uuid.uuid1()) + ".pkl", soln, t, dx)
     diagfile.close()
 
