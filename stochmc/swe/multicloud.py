@@ -18,7 +18,7 @@ from math import sqrt
 from ..wrapper import multicloud as mc
 from ..io import NetCDF4Writer
 
-from ..tadmor.tadmor_1d import periodic_bc, central_scheme
+from ..tadmor.tadmor_1d import periodic_bc, central_scheme, _single_step
 from .timestepping import steps
 
 logger = logging.getLogger(__file__)
@@ -206,7 +206,9 @@ class MulticloudModel(object):
         # hyperbolic terms
         soln.comm()
         f_partial = partial(f)
-        soln.q = central_scheme(f_partial, soln.q, dx, dt)
+
+        soln.q = _single_step(f_partial, soln.q, dx, dt / 2)
+        # grid is now staggered
 
         # multicloud model step
         mc.multicloud_rhs(
@@ -217,6 +219,9 @@ class MulticloudModel(object):
             soln['q'], soln['hs'], dt, dx, time,
             soln['tebst'], soln['hc'],
             soln['hd'], soln['lmd'])
+
+        soln.q = np.roll(_single_step(f_partial, soln.q, dx, dt/2), -1, axis=-1)
+        # grid is restored
 
         self.diags['rms'] = np.mean(soln['u']**2)
         self.update_avg(soln)
@@ -265,6 +270,7 @@ class MulticloudModelDissipation(MulticloudModel):
         super(MulticloudModelDissipation, self).__init__(*args, **kwargs)
 
         logger.info("Dissipation=`{}`".format(dissipation))
+        self.diags['fdis'] = 0.0
         self.dissipation = dissipation
 
     def onestep(self, soln, time, dt, dx, *args, **kwargs):
@@ -272,7 +278,11 @@ class MulticloudModelDissipation(MulticloudModel):
         soln = super(MulticloudModelDissipation, self)\
                .onestep(soln, time, dt, dx, *args, **kwargs)
 
+        uold = soln['u'].copy()
         soln['u'] = np.exp(-dt * self.dissipation) * soln['u']
+        fdis = (soln['u'] - uold) / dt
+
+        self.diags['fdis'] = np.mean(soln['u'] * fdis)
 
 
         return soln
