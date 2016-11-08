@@ -14,14 +14,14 @@ from numba import jit
 from .tadmor.tadmor_2d import central_scheme
 from scipy.fftpack import dst, idst, dct, idct, fft, ifft, fftfreq
 
-def divergence(u,v):
+def divergence(u,v, scalex=1.0, scaley=1.0):
 
 
     fv = xform_sin(v)
     fu = xform_cos(u)
 
-    k = fftfreq(fv.shape[1], 1/fv.shape[1])[None,:]
-    m = np.arange(fv.shape[0])[:,None]
+    k = fftfreq(fv.shape[1], 1/fv.shape[1])[None,:]/scalex
+    m = np.arange(fv.shape[0])[:,None]/scaley
 
     fd = fv * m + fu * 1j * k
 
@@ -47,10 +47,10 @@ def ixform_cos(u):
     return  dct(ifft(u, axis=1), type=1, axis=0)/2/(u.shape[0]-1)
 
 
-def pressure_solve_2d(u, v, dx, dy):
+def pressure_solve_2d(u, v, scalex=1.0, scaley=1.0):
     """This solver assumes a rigid wall at y=+- Ly/2 and periodic boundary
-    conditions in the x-direction. Currently assumes that x in [0, 2pi] and y
-    in [0, pi].
+    conditions in the x-direction. Currently assumes that x in [0, 2pi*scalyx] and y
+    in [0, pi*scaley].
 
     Parameters
     ----------
@@ -58,8 +58,8 @@ def pressure_solve_2d(u, v, dx, dy):
         zonal velocity.
     v: [ny, nx]
         meridional velocity. must be zero at y-boundaries.
-    dx: float
-    dy: float
+    scalex: float
+    scaley: float
 
     Returns
     -------
@@ -71,11 +71,11 @@ def pressure_solve_2d(u, v, dx, dy):
     fv = xform_sin(v)
     fu = xform_cos(u)
 
-    k = fftfreq(fv.shape[1], 1/fv.shape[1])[None,:]
-    m = np.arange(fv.shape[0])[:,None]
+    k = fftfreq(fv.shape[1], 1/fv.shape[1])[None,:]/scalex
+    m = np.arange(fv.shape[0])[:,None]/scaley
 
 
-    lapl = -(k**2 + m **2)
+    lapl = -(k**2 + m**2)
     lapl[0,0] = 1.0
 
 
@@ -136,6 +136,22 @@ def test_pressure_solve_2d():
 
     ut, vt = u-px, v-py
     d1 = divergence(ut, vt)
+    np.testing.assert_almost_equal(d1, 0.0)
+
+    # data over another interval
+    scalex = 20.0
+    scaley = 3
+    x  = np.arange(102)/102 *2* pi * scalex
+    y = np.linspace(0,pi,51) * scaley
+    y, x= np.meshgrid(y, x, indexing='ij')
+
+    u = np.cos(y/scaley) * np.cos(x/scalex)
+    v = np.sin(2*y/scaley) * np.cos(x/scalex)
+
+    px, py = pressure_solve_2d(u, v, scalex=scalex, scaley=scaley)
+
+    ut, vt = u-px, v-py
+    d1 = divergence(ut, vt, scalex=scalex, scaley=scaley)
     np.testing.assert_almost_equal(d1, 0.0)
 
 
