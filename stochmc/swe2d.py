@@ -14,6 +14,8 @@ from numba import jit
 from .tadmor.tadmor_2d import central_scheme
 from scipy.fftpack import dst, idst, dct, idct, fft, ifft, fftfreq
 
+
+
 def divergence(u,v, scalex=1.0, scaley=1.0):
 
 
@@ -63,8 +65,9 @@ def pressure_solve_2d(u, v, scalex=1.0, scaley=1.0):
 
     Returns
     -------
-    gx:
-    gy:
+    px: horizontal pressure gradient
+    py: horizontal pressure gradient
+    p:  pressure
     """
 
 
@@ -74,18 +77,48 @@ def pressure_solve_2d(u, v, scalex=1.0, scaley=1.0):
     k = fftfreq(fv.shape[1], 1/fv.shape[1])[None,:]/scalex
     m = np.arange(fv.shape[0])[:,None]/scaley
 
-
     lapl = -(k**2 + m**2)
     lapl[0,0] = 1.0
 
-
+    fp = (1j * k *fu + m * fv)/lapl
     fpx = (-k**2 *fu + 1j * k * m * fv)/lapl
     fpy = (-1j * k * m * fu - m**2 * fv )/lapl
 
+    p  = ixform_cos(fp)
     px = ixform_cos(fpx)
     py = ixform_sin(fpy)
 
-    return px, py
+    return px, py, p
+
+
+def Grid(object):
+    """Object for transparent handling of pressure solving
+    """
+
+    def __init__(self, scales=None, size=None):
+        self.scales = scales
+        self.size = size
+
+    @property
+    def grid(self):
+        """
+        y, x tuple of meshgrid output
+        """
+        ny, nx = self.size
+
+        x  = np.arange(nx)/nx * 2 * pi * self.scales[1]
+        y  = np.linspace(0, pi, ny) * self.scales[0]
+
+
+        return np.meshgrid(y, x, indexing='ij')
+
+    def pressure_solve_2d(self, u, v):
+        return pressure_solve_2d(u, v, scalex=self.scales[1],
+                                 scaley=self.scales[0])
+
+    def divergence(self, u, v):
+        return divergence(u, v, scalex=self.scales[1],
+                                 scaley=self.scales[0])
 
 
 def test_pressure_solve_2d():
@@ -103,7 +136,7 @@ def test_pressure_solve_2d():
     pxex = 4 * np.cos(4*y) *5* np.sin(5*x)/(16+25)
     pyex = 16 * np.sin(4*y) * np.cos(5*x)/(16+25)
 
-    px, py = pressure_solve_2d(u, v, 1.0, 1.0)
+    px, py,_ = pressure_solve_2d(u, v, 1.0, 1.0)
 
     ut, vt = u-px, v-py
     d1 = divergence(ut, vt)
@@ -117,7 +150,7 @@ def test_pressure_solve_2d():
     u = np.cos(y) * np.cos(x)
     v = 0* u
 
-    px, py = pressure_solve_2d(u, v, 1.0, 1.0)
+    px, py,_ = pressure_solve_2d(u, v, 1.0, 1.0)
 
     ut, vt = u-px, v-py
     d1 = divergence(ut, vt)
@@ -132,7 +165,7 @@ def test_pressure_solve_2d():
     v[0] = 0
     v[-1] = 0
 
-    px, py = pressure_solve_2d(u, v, 1.0, 1.0)
+    px, py,_ = pressure_solve_2d(u, v, 1.0, 1.0)
 
     ut, vt = u-px, v-py
     d1 = divergence(ut, vt)
@@ -148,7 +181,7 @@ def test_pressure_solve_2d():
     u = np.cos(y/scaley) * np.cos(x/scalex)
     v = np.sin(2*y/scaley) * np.cos(x/scalex)
 
-    px, py = pressure_solve_2d(u, v, scalex=scalex, scaley=scaley)
+    px, py,_ = pressure_solve_2d(u, v, scalex=scalex, scaley=scaley)
 
     ut, vt = u-px, v-py
     d1 = divergence(ut, vt, scalex=scalex, scaley=scaley)
@@ -163,7 +196,9 @@ class Linear2DSolver(object):
     axes = ('y', 'x')
 
     params = dict(beta=1.0, f=0.0)
-    grid = object()
+
+    def __init__(self):
+        self.grid = Grid(scales=[1.0, 1.0], size=[100, 100])
 
     @property
     def ix(self):
@@ -189,7 +224,7 @@ class Linear2DSolver(object):
         ft = fq[self.ix['t']]
 
         # use pressure gradient for barotropic mode
-        fu[0] = t[0]
+        fu[0] = +t[0]
 
         fu[1] = -t[1]
         fu[2] = -t[2]
@@ -208,16 +243,32 @@ class Linear2DSolver(object):
         fv = fq[self.ix['v']]
         ft = fq[self.ix['t']]
 
+        fv[0] = +t[0]
         fv[1] = -t[1]
         fv[2] = -t[2]
 
         ft[1] = -v[1]
         ft[2] = -v[2] / 4
 
-    def pressure_solve(self, q):
-        p = q[self.ix['t']][0]
+    def pressure_solve(self, q, dt=1.0):
+        """Pressure solver
+
+        Parameters
+        ----------
+        q: [neq, ny, nx]
+            unghosted data
+        dt: float, optional
+            time step
+        """
+        p0 = q[self.ix['t']][0]
         u = q[self.ix['u']][0]
         v = q[self.ix['v']][0]
+
+        px, py, p = self.grid.pressure_solve_2d(u, v)
+        u[:] = u - px
+        v[:] = v - py
+        p0[:] = p/dt
+
 
 
 
