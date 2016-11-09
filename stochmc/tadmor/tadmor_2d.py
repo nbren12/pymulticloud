@@ -67,54 +67,57 @@ def _corrector_step(fx, fy, lmd):
         correlate1d(oy, [.5, .5], axis=1)
 
 
-def _single_step(fx, fy, uc, dx, dt):
-    ux = np.zeros_like(uc)
-    uy = np.zeros_like(uc)
-    uc = uc.copy()
-    lmd = dt / dx
-
-    periodic_bc(uc, axes=(1, 2))
-    ustag = _stagger_avg(uc)
-
-    # predictor: mid-time-step pointewise values at cell-center
-    # Eq. (1.1) in Jiand and Tadmor
-    ux = _slopes(fx(uc), axis=1)
-    uy = _slopes(fy(uc), axis=2)
-    uc -= lmd / 2 * (ux + uy)
-
-    # corrector
-    # Eq (1.2) in Jiang and Tadmor
-    periodic_bc(uc, axes=(1, 2))
-    ustag += _corrector_step(fx(uc), fy(uc), lmd)
-
-    return ustag
-
-
 def _roll2d(u):
     return np.roll(np.roll(u, -1, axis=1), -1, axis=2)
 
+class Tadmor2D(object):
 
-def central_scheme(fx, fy, uc, dx, dt):
-    """ One timestep of centered scheme
+    def _single_step(self, fx, fy, uc, dx, dt):
+        ux = np.zeros_like(uc)
+        uy = np.zeros_like(uc)
+        uc = uc.copy()
+        lmd = dt / dx
+
+        periodic_bc(uc, axes=(1, 2))
+        ustag = _stagger_avg(uc)
+
+        # predictor: mid-time-step pointewise values at cell-center
+        # Eq. (1.1) in Jiand and Tadmor
+        ux = _slopes(fx(uc), axis=1)
+        uy = _slopes(fy(uc), axis=2)
+        uc -= lmd / 2 * (ux + uy)
+
+        # corrector
+        # Eq (1.2) in Jiang and Tadmor
+        periodic_bc(uc, axes=(1, 2))
+        ustag += _corrector_step(fx(uc), fy(uc), lmd)
+
+        return ustag
 
 
-    Parameters
-    ----------
-    fx : callable
-        fx(u) calculates the numeric flux in the x-direction
-    uc: (neq, n)
-        The state vector on the centered grid
-    dx: float
-        size of grid cell
-    dt: float
-        Time step
 
-    Returns
-    -------
-    out: (neq, n)
-       state vector on centered grid
-    """
-    ustag = _roll2d(_single_step(fx, fy, uc, dx, dt / 2))
-    uc = _single_step(fx, fy, ustag, dx, dt / 2)
 
-    return uc
+    def central_scheme(self, fx, fy, uc, dx, dt):
+        """ One timestep of centered scheme
+
+
+        Parameters
+        ----------
+        fx : callable
+            fx(u) calculates the numeric flux in the x-direction
+        uc: (neq, n)
+            The state vector on the centered grid
+        dx: float
+            size of grid cell
+        dt: float
+            Time step
+
+        Returns
+        -------
+        out: (neq, n)
+        state vector on centered grid
+        """
+        ustag = _roll2d(self._single_step(fx, fy, uc, dx, dt / 2))
+        uc = self._single_step(fx, fy, ustag, dx, dt / 2)
+
+        return uc

@@ -1,5 +1,5 @@
 import numpy as np
-from .tadmor_2d import central_scheme, _slopes, periodic_bc, _stagger_avg
+from .tadmor_2d import _slopes, periodic_bc, _stagger_avg, Tadmor2D
 
 def tadmor_error(n):
     uc = np.zeros((1, n+ 4, n + 4))
@@ -27,10 +27,13 @@ def tadmor_error(n):
     tend = 1.8
     t = 0
 
+    tad = Tadmor2D()
+
+
 
     while (t < tend - 1e-10):
         dt = min(dt, tend-t)
-        uc = central_scheme(fx, fy, uc, dx, dt)
+        uc = tad.central_scheme(fx, fy, uc, dx, dt)
         t+=dt
 
     return np.abs(initcond(x-t, y-t) - uc[0,...]).sum()/n/n
@@ -87,10 +90,12 @@ def plot_advection2d():
     img = plt.pcolormesh(uc[0,...].T, label='tadmor', vmin=0, vmax=M)
     plt.axis('tight')
 
+    tad = Tadmor2D()
+ 
 
     while (t < tend - 1e-10):
         dt = min(dt, tend-t)
-        uc = central_scheme(fx, fy, uc, dx, dt)
+        uc = tad.central_scheme(fx, fy, uc, dx, dt)
         t+=dt
 
     plt.subplot(122)
