@@ -18,6 +18,11 @@ Options:
     --solver=<name>                     solver [default: dissip]
     --solver-args=<args>                solver initialization arguments
     --init-args=<args>                  initial condition arguments
+Examples:
+
+run_mc.py -d 400 --solver='cmt'
+
+
 """
 import sys
 import os
