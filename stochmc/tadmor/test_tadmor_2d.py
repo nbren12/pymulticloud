@@ -33,7 +33,7 @@ def tadmor_error(n):
 
     while (t < tend - 1e-10):
         dt = min(dt, tend-t)
-        uc = tad.central_scheme(fx, fy, uc, dx, dt)
+        uc = tad.central_scheme(fx, fy, uc, dx, dx, dt)
         t+=dt
 
     return np.abs(initcond(x-t, y-t) - uc[0,...]).sum()/n/n
@@ -95,7 +95,7 @@ def plot_advection2d():
 
     while (t < tend - 1e-10):
         dt = min(dt, tend-t)
-        uc = tad.central_scheme(fx, fy, uc, dx, dt)
+        uc = tad.central_scheme(fx, fy, uc, dx, dx, dt)
         t+=dt
 
     plt.subplot(122)

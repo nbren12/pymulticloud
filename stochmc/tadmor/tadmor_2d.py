@@ -9,6 +9,7 @@ TODO
 ----
 Replace all periodic_bc calls with `comm', so that this code can be run in parallel
 """
+from functools import partial
 import numpy as np
 from scipy.ndimage import correlate1d
 from numba import jit
@@ -57,10 +58,10 @@ def _stagger_avg(uc):
         correlate1d(oy, [.5, .5], axis=1)
 
 
-def _corrector_step(fx, fy, lmd):
+def _corrector_step(fx, fy, lmd_x, lmd_y):
 
-    ox = correlate1d(fx, [lmd, -lmd], axis=1)
-    oy = correlate1d(fy, [lmd, -lmd], axis=2)
+    ox = correlate1d(fx, [lmd_x, -lmd_x], axis=1)
+    oy = correlate1d(fy, [lmd_y, -lmd_y], axis=2)
 
 
     return correlate1d(ox, [.5, .5], axis=2) + \
@@ -70,34 +71,35 @@ def _corrector_step(fx, fy, lmd):
 def _roll2d(u):
     return np.roll(np.roll(u, -1, axis=1), -1, axis=2)
 
+
 class Tadmor2D(object):
 
-    def _single_step(self, fx, fy, uc, dx, dt):
+    comm = partial(periodic_bc, axes=(1, 2))
+
+    def _single_step(self, fx, fy, uc, dx, dy, dt):
         ux = np.zeros_like(uc)
         uy = np.zeros_like(uc)
         uc = uc.copy()
-        lmd = dt / dx
+        lmd_x = dt / dx
+        lmd_y = dt / dy
 
-        periodic_bc(uc, axes=(1, 2))
+        self.comm(uc)
         ustag = _stagger_avg(uc)
 
         # predictor: mid-time-step pointewise values at cell-center
         # Eq. (1.1) in Jiand and Tadmor
         ux = _slopes(fx(uc), axis=1)
         uy = _slopes(fy(uc), axis=2)
-        uc -= lmd / 2 * (ux + uy)
+        uc -= lmd_x / 2 *ux   + lmd_y/2 * uy
 
         # corrector
         # Eq (1.2) in Jiang and Tadmor
-        periodic_bc(uc, axes=(1, 2))
-        ustag += _corrector_step(fx(uc), fy(uc), lmd)
+        self.comm(uc)
+        ustag += _corrector_step(fx(uc), fy(uc), lmd_x, lmd_y)
 
         return ustag
 
-
-
-
-    def central_scheme(self, fx, fy, uc, dx, dt):
+    def central_scheme(self, fx, fy, uc, dx, dy, dt):
         """ One timestep of centered scheme
 
 
@@ -117,7 +119,7 @@ class Tadmor2D(object):
         out: (neq, n)
         state vector on centered grid
         """
-        ustag = _roll2d(self._single_step(fx, fy, uc, dx, dt / 2))
-        uc = self._single_step(fx, fy, ustag, dx, dt / 2)
+        ustag = _roll2d(self._single_step(fx, fy, uc, dx, dy, dt / 2))
+        uc = self._single_step(fx, fy, ustag, dx, dy, dt / 2)
 
         return uc
