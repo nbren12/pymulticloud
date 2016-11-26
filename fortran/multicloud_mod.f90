@@ -568,87 +568,7 @@ contains
 
   END SUBROUTINE findindex
 !     birth death routine
-  SUBROUTINE   tauleap(fcloc,fdloc,fsloc,cd,cl,d,dt, nstoch)
-
-    REAL*8, INTENT(OUT)                      :: fcloc
-    REAL*8, INTENT(OUT)                      :: fdloc
-    REAL*8, INTENT(OUT)                      :: fsloc
-    REAL*8, INTENT(IN OUT)                   :: cd
-    REAL*8, INTENT(IN OUT)                   :: cl
-    REAL*8, INTENT(IN OUT)                   :: d
-    REAL*8, INTENT(IN)                       :: dt
-    REAL*8, INTENT(IN)                       :: nstoch
-
-    REAL*8 useed,ubits,dunib,dustar,duni
-    REAL*8 r01,r02,r10,r20,r23,r12,r30
-    REAL*8 time,count,t,tloc
-    REAL*8  lr01,lr02,lr10,lr20,lr23,lr12,lr30
-    REAL*8 rsum(7), rmat(7),test
-    REAL*8  diff(3), n
-    REAL*8 tlocal,timeloc,nsite, temp3
-    INTEGER :: rindex, temp2,ind,clearsky,cloud(3),diffv(7,3)
-    integer :: ignpoi, nevent(7), i
-    real(4) mu
-
-    rindex=0
-
-    nsite = nstoch*nstoch
-
-    !     Conditional rates
-    CALL equildistr2(cd,cl,d,r01,r02,r10,r20,r23,r12,r30)
-    !     Define cloud state
-
-    cloud(1) = DNINT(nsite*fcloc)
-    cloud(2) = DNINT(nsite*fdloc)
-    cloud(3) = DNINT(nsite*fsloc)
-
-
-    !     define the seven possible transitions
-    diffv(1,1:3) = [1,0,0]
-    diffv(2,1:3) = [-1,0,0]
-    diffv(3,1:3) = [-1,1,0]
-    diffv(4,1:3) = [0,1,0]
-    diffv(5,1:3) = [0,-1,0]
-    diffv(6,1:3) = [0,-1,1]
-    diffv(7,1:3) = [0,0,-1]
-
-    !     We will use tau leaping
-    !     time step, DT
-    timeloc = 0
-    count = 0
-    clearsky = DNINT(nsite) - sum(cloud)
-
-    lr01 = r01*clearsky
-    lr10 = r10*cloud(1)
-    lr12 = r12*cloud(1)
-    lr02 = r02*clearsky
-    lr20 = r20*cloud(2)
-    lr23 = r23*cloud(2)
-    lr30 = r30*cloud(3)
-
-    rmat = [lr01, lr10, lr12, lr02, lr20, lr23, lr30]
-
-    do i =1,7
-       mu = rmat(i)/dt
-       print *, mu
-       if (mu > 0 ) then
-          nevent(i) = ignpoi(mu)
-       else
-          nevent(i) = 0
-       end if
-    end do
-    cloud(1) = cloud(1) + nevent(1) - nevent(2) - nevent(3)
-    cloud(2) = cloud(2) + nevent(3) + nevent(4) - nevent(5) - nevent(6)
-    cloud(3) = cloud(3) + nevent(6) - nevent(7)
-
-
-    fcloc = max(0.0, cloud(1)/ nsite)
-    fdloc = max(0.0, cloud(2)/ nsite)
-    fsloc = max(0.0, cloud(3)/ nsite)
-
-
-    RETURN
-  END SUBROUTINE   tauleap
+  
   !     birth death routine
   SUBROUTINE   birthdeath2(fcloc,fdloc,fsloc,cd,cl,d,dt, nstoch)
 
@@ -826,7 +746,8 @@ contains
        if (stochtype == 1) then
           CALL birthdeath2(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
        else if (stochtype == 2) then
-          CALL tauleap(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
+          ! CALL tauleap(fcloc,fdloc,fsloc, cd ,cl, dryness,dt, nstochgl)
+          stop -1
        end if
 
        if (isnan(fcloc)) then
