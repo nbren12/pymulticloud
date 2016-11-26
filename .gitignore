@@ -11,4 +11,5 @@
 !*.org
 !*.tex
 !*.nml
+!*/
 CMakeCache*.txt
