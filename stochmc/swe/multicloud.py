@@ -15,7 +15,8 @@ from math import sqrt
 
 # this import needs to happen before the others for some reason. This is
 # probably a conflict with numba.
-from ..wrapper import multicloud as mc
+# from ..wrapper import multicloud as mc
+from fortran import mc
 from ..io import NetCDF4Writer
 
 from ..tadmor.tadmor_1d import periodic_bc, central_scheme, _single_step
@@ -211,14 +212,13 @@ class MulticloudModel(object):
         # grid is now staggered
 
         # multicloud model step
-        mc.multicloud_rhs(
-            soln['fc'], soln['fd'],
-            soln['fs'], soln['u'][1],
-            soln['u'][2], soln['t'][1],
-            soln['t'][2], soln['teb'],
-            soln['q'], soln['hs'], dt, dx, time,
-            soln['tebst'], soln['hc'],
-            soln['hd'], soln['lmd'])
+        soln['hc'], soln['hd'], soln['lmd'] = mc.multicloud_wrapper(
+             soln['fc'], soln['fd'],
+             soln['fs'], soln['u'][1],
+             soln['u'][2], soln['t'][1],
+             soln['t'][2], soln['teb'],
+             soln['q'], soln['hs'], dt, dx, time,
+             soln['tebst'])
 
         soln.q = np.roll(_single_step(f_partial, soln.q, dx, dt/2), -1, axis=-1)
         # grid is restored
@@ -232,7 +232,7 @@ class MulticloudModel(object):
 
         soln = Soln(n, **kwargs)
 
-        fceq, fdeq, fseq = mc.equilibrium_fractions()
+        fceq, fdeq, fseq = mc.multicloud_eq()
 
         logger.info("ASST=`{}`,n=`{}`, dx=`{}`".format(asst, n, dx))
 
