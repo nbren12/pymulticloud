@@ -1,0 +1,14 @@
+*
+!*.py
+!*.txt
+!*.f
+!*.F
+!*.f90
+!*.F90
+!*.c
+!*.h
+!*.cpp
+!*.org
+!*.tex
+!*.nml
+CMakeCache*.txt
