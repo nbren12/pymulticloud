@@ -385,11 +385,6 @@ def main(run_duration=100, dt_out=1.0, solver=None, restart_file=None,
     # include initial data
     i_out = 1
 
-    datadir = "data"
-
-    if not os.path.isdir(datadir):
-        os.mkdir(datadir)
-
     diagfile = open("diags.pkl", "ab")
 
 
