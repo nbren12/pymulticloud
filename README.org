@@ -2,9 +2,5 @@ This project consists of a mix of python and fortran.
 
 
 The python multicloud model code relies on a fortran wrapper for the multicloud
-model. To compile this wrapper, the following commands must be run in the root directory of this projection
-
-#+BEGIN_SRC sh
-cmake .
-make multicloud
-#+END_SRC
+model. To compile this wrapper, you need to run the =compile.sh= script in the
+project's root directory.
