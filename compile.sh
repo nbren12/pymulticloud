@@ -2,4 +2,5 @@
 # FC=gfortran CC=gcc CXX=g++ cmake -DCMAKE_BUILD_TYPE=Release .
 # make multicloud
 
-make -C fortran -f pymodule.mk
+make -C fortran -f pymodule.mk clean
+make -C fortran -f pymodule.mk all

@@ -228,7 +228,7 @@ class MulticloudModel(object):
 
         return soln
 
-    def init_mc(self, n=1000, dx=40 / 1500, asst=5, lsst=.5, **kwargs):
+    def init_mc(self, n=1000, dx=40, asst=5, lsst=1.0, **kwargs):
 
         soln = Soln(n, **kwargs)
 
@@ -237,6 +237,7 @@ class MulticloudModel(object):
         logger.info("ASST=`{}` K,n=`{}`, dx=`{}`".format(asst, n, dx))
 
         asst = asst/15.0
+        dx /= 1500
 
         soln['fc'] = fceq
         soln['fd'] = fdeq
@@ -248,7 +249,7 @@ class MulticloudModel(object):
         # initialize teb
         x = np.arange(n) * dx
         domain_size = n * dx
-        lsst = domain_size * .5
+        lsst = domain_size * lsst
 
         tebst = asst * np.cos(2 * np.pi * (x - domain_size / 2) / lsst) * (
             x > domain_size / 2 - lsst / 2) * (x < domain_size / 2 + lsst / 2)

@@ -187,6 +187,30 @@ def tr1(dulow, qd, qc, lmd, T):
     T /= day
 
 
+@rates_decorator(nopython=True)
+def tr2(dulow, qd, qc, lmd, T):
+    """Transition rates for stochastic CMT process
+
+    This function is empirically hand-tuned. Written on 2016-10-18.
+    """
+    q = qd + .4 * qc
+
+    a = 20 * softmax(lmd + .6)
+    b = np.tanh(softmax(q - .5))
+    bn = np.tanh(softmax(.5 - q))
+
+    c = softmax(abs(dulow) - .15) * 15
+    cn = softmax(.05 - abs(dulow)) * 15
+
+    T[0, 1] = a + b
+    T[1, 2] = c
+    T[1, 0] = bn
+    T[2, 0] = bn
+    T[2, 1] = cn
+
+    T /= day
+
+
 @jit(nopython=True)
 def update_cmt(u, scmt, qd, dulow, dumid, dt):
 
@@ -332,12 +356,15 @@ def interpolant_hash(tout, qd, dt_in):
 
 def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
 
-    if scmt.shape != u(0).shape[1:]:
+    t0 = tout[0]
+
+    if scmt.shape != u(t0).shape[1:]:
         raise ValueError("SCMT must have the same shape as u")
 
     scmt = scmt.astype(np.int32)
 
-    output_scmt = np.zeros((tout.shape[0], u(0).shape[1]))
+
+    output_scmt = np.zeros((tout.shape[0], u(t0).shape[1]))
 
     # Precalculate qd at necessary times
     caches = [interpolant_hash(tout, arg, dt_in) for arg in args]
@@ -369,7 +396,7 @@ def run_cmt_model(u, scmt, tout, *args, f=None, dt_in=600):
     return output_scmt
 
 
-def stochastic_cmt_diagnostic_run(datadir, f=tr1):
+def stochastic_cmt_diagnostic_run(data, f=tr1):
     """Run stochastic cmt scheme in diagnostic mode on previous output from the
     multicloud model.
 
@@ -380,15 +407,15 @@ def stochastic_cmt_diagnostic_run(datadir, f=tr1):
     """
     from .read import read_data
     import matplotlib.pyplot as plt
+    import xarray as xr
 
     # read qd
     logger.info("starting column cmt run")
-    data = read_data(datadir)
 
-    t_data = data['time'][:] * T
-    qd_data = data['hd']
-    qc_data = data['hc']
-    lmd_data = data['lmd']
+    t_data = data.time.values * T
+    qd_data = data.hd.values
+    qc_data = data.hc.values
+    lmd_data = data.lmd.values
 
     u_relax_data = data['u']
 
@@ -409,7 +436,7 @@ def stochastic_cmt_diagnostic_run(datadir, f=tr1):
 
 
 class CmtSolver(object):
-    def __init__(self, transition_rates=tr1, mcsolver=None):
+    def __init__(self, transition_rates=tr2, mcsolver=None):
         "docstring"
 
         logger.info("Using CMT transition rate function: " + repr(
