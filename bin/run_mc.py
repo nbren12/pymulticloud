@@ -9,6 +9,7 @@ Usage:
               [--solver=<name>]
               [--solver-args=<args>]
               [--init-args=<args>]
+              [--profile]
 
 Options:
     -r --restart                        use restart file to initialize run
@@ -22,6 +23,14 @@ Examples:
 
 run_mc.py -d 400 --solver='cmt'
 
+
+Notes:
+
+Valid solver types are
+    dissip
+    cmt
+    cmtnonlin
+    nonlin
 
 """
 import sys
@@ -76,7 +85,11 @@ if __name__ == '__main__':
     else:
         raise ValueError("Solver type `{}` is not available".format(solver_name))
 
-    if False:
+    if args['--profile']:
+        print("Profiling Code")
+        print()
+        print()
+        print()
         import cProfile
         cProfile.run("""
 main(run_duration=float(args['--duration']),

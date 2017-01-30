@@ -13,14 +13,14 @@ from collections import deque
 import numpy as np
 from math import sqrt
 
+from gnl.pdes.tadmor.tadmor import Tadmor1DBase
+from gnl.pdes.timestepping import steps
+
 # this import needs to happen before the others for some reason. This is
 # probably a conflict with numba.
 # from ..wrapper import multicloud as mc
 from fortran import mc
 from ..io import NetCDF4Writer
-
-from ..tadmor.tadmor_1d import periodic_bc, central_scheme, _single_step
-from .timestepping import steps
 
 logger = logging.getLogger(__file__)
 
@@ -58,7 +58,9 @@ class Soln(object):
     #     return getattr(self._data, name)
 
     def comm(self):
-        periodic_bc(self._data)
+        uc = self._data
+        uc[:, :2] = uc[:, -4:-2]
+        uc[:, -2:] = uc[:, 2:4]
 
 
     @property
@@ -177,14 +179,28 @@ def nonlinear_source(u, T, dx, L=3):
 
     return dict(u=fu, t=ft)
 
+
+class LinTadmor(Tadmor1DBase):
+    def fx(self, out, uc):
+        f(uc, fq=out)
+
+class NLTadmor(Tadmor1DBase):
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def fx(self, out, uc):
+        f_nonlinear(uc, fq=out, **self.kwargs)
+
 class MulticloudModel(object):
     """Base MulticloudModel solver class"""
     diags = {}
 
-    def __init__(self):
+    def __init__(self, tad=LinTadmor()):
         "docstring"
         self.diags['rms'] = 0.0
         self.reset_avg()
+        self.tad = tad
 
     def update_avg(self, soln):
 
@@ -204,12 +220,12 @@ class MulticloudModel(object):
         if not self.validate_soln(soln[:,2:-2]):
             raise ValueError("NAN in solution array")
 
-        # hyperbolic terms
+        # periodic boundaries
         soln.comm()
-        f_partial = partial(f)
 
-        soln.q = _single_step(f_partial, soln.q, dx, dt / 2)
-        # grid is now staggered
+        # hyperbolic terms
+        uc = soln.q[:,:,None]
+        uc[:] = self.tad.central_scheme(uc, dx, dt)
 
         # multicloud model step
         soln['hc'], soln['hd'], soln['lmd'] = mc.multicloud_wrapper(
@@ -219,9 +235,6 @@ class MulticloudModel(object):
              soln['t'][2], soln['teb'],
              soln['q'], soln['hs'], dt, dx, time,
              soln['tebst'])
-
-        soln.q = np.roll(_single_step(f_partial, soln.q, dx, dt/2), -1, axis=-1)
-        # grid is restored
 
         self.diags['rms'] = np.mean(soln['u']**2)
         self.update_avg(soln)
@@ -297,7 +310,10 @@ class MulticloudModelNonlinear(MulticloudModelDissipation):
     """Multicloud with Nonlinear advection"""
     def __init__(self, *args, q_tld=.9, **kwargs):
         "docstring"
-        super(MulticloudModelNonlinear, self).__init__(*args, **kwargs)
+
+        tad = NLTadmor(q_tld=q_tld)
+
+        super(MulticloudModelNonlinear, self).__init__(*args, tad=tad, **kwargs)
 
         # arrays for AB3
         self._nonlinear_ab3 = {key: deque([0,0,0], maxlen=3) for key in ['u', 't']}
